@@ -69,7 +69,11 @@ function createEncoder(inputSamplerate) {
 
   if (useAsynchronous) {
     enc = new Webcast.Encoder.Asynchronous({
-      scripts: ["http://localhost:8000/libsamplerate.js", "http://localhost:8000/libshine.js", "http://localhost:8000/webcast.js"],
+      scripts: [
+        "https://rawgithub.com/webcast/libsamplerate.js/master/dist/libsamplerate.js",
+        "https://rawgithub.com/savonet/shine/master/js/dist/libshine.js",
+        "https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"
+      ],
       encoder: enc
     });
   }

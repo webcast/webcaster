@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+    
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Broster Client</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="https://rawgithub.com/savonet/shine/master/js/dist/libshine.js"></script>
+    <script src="https://rawgithub.com/webcast/libmad.js/master/dist/libmad.js"></script>
+    <script src="https://rawgithub.com/webcast/taglib.js/master/dist/taglib.js"></script>
+    <script src="https://rawgithub.com/webcast/libsamplerate.js/master/dist/libsamplerate.js"></script>
+    <script src="https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"></script>
+    <script src="https://rawgithub.com/webcast/webcast.js/master/examples/client/client.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>  
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div class="span3">
+          <div class="well sidebar-nav">
+            <form>
+              <fieldset>
+                <legend>Setup</legend>
+                <div class="control-group">
+                  <label>Encoder</label>
+                  <div class="controls">
+                    <label class="radio inline">
+                      <input type="radio" name="encoder" value="mp3" id="mp3" checked>MP3
+                    </label>
+                    <label class="radio inline">
+                      <input type="radio" name="encoder" value="raw"   id="raw">Raw
+                    </label>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label>Samplerate</label>
+                  <div class="controls">
+                    <select id="samplerate"></select>
+                  </div>
+                  <label>Bitrate</label>
+                  <div class="controls">
+                    <select id="bitrate"></select>
+                  </div>
+                  <label>Channels</label>
+                  <div class="controls">
+                    <label class="radio inline">
+                      <input type="radio" name="channels" value="2" id="stereo" checked>Stereo
+                    </label>
+                    <label class="radio inline">
+                      <input type="radio" name="channels" value="1">Mono
+                    </label>
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label>Stream destination URI</label>
+                  <div class="controls">
+                    <input id="uri" type="text" size="40" value="ws://localhost:8080/mount">
+                  </div>
+                </div>
+                <div class="control-group">
+                  <div class="controls">
+                    <label class="checkbox">
+                      <input type="checkbox" id="passThrough"> Play stream locally
+                    </label>
+                  </div>
+                  <div class="controls">
+                    <label class="checkbox">
+                      <input type="checkbox" id="loop"> Repeat file
+                    </label>
+                  </div>
+                  <div class="controls">
+                    <label class="checkbox">
+                      <input type="checkbox" id="asynchronous"> Use asynchronous worker
+                    </label>
+                  </div>
+                  <div class="controls">
+                    <label class="checkbox">
+                      <input type="checkbox" id="mad"> Decode using libmad.js
+                    </label>
+                  </div>
+                </div>
+              </fieldset>
+            </form>
+          </div>
+        </div>
+        <div class="span9">
+          <div class="hero-unit">
+            <h1>Broster Client</h1>
+          </div>
+          <form>
+            <fieldset>
+              <div class="control-group">
+              <label>Stream from the microphone</label>
+              <div class="controls">
+                <button class="btn btn-danger" id="record-audio"><i class="icon-facetime-video"></i> Record</button>
+              </div>
+              </div>
+              <div class="control-group">
+                <label>Choose a file to play</label>
+                <div class="controls">
+                  <input type="file" id="file" accept="audio/*">
+                </div>
+                <div class="controls">
+                  <button class="btn btn-success" id="play-audio"><i class="icon-play"></i> Play</button>
+                  <button class="btn" id="metadata">Read Metadata</button>
+                </div>
+              </div>
+              <div class="control-group">
+                <label>Stop Streaming</label>
+                <div class="controls">
+                  <button class="btn" id="stop"><i class="icon-stop"></i> Stop</button>
+                </div>
+              </div>
+              <div class="control-group">
+                <label>Send metadata</label>
+                <div class="controls">
+                  <label class="control-label" for="artist">Artist</label>
+                  <input id="artist" type="text">
+                </div>
+                <div class="controls">
+                  <label class="control-label" for="title">Title</label>
+                  <input id="title" type="text">
+                </div>
+                <div class="controls">
+                  <button class="btn" id="send-metadata">Send</button>
+                </div>
+              </div>
+            </fieldset>
+          </form>
+          <div id="output"></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

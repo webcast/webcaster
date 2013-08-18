@@ -68,7 +68,7 @@
                   </div>
                   <div class="controls">
                     <label class="checkbox">
-                      <input type="checkbox" id="loop"> Repeat file
+                      <input type="checkbox" id="loop" checked="checked"> Repeat playlist
                     </label>
                   </div>
                   <div class="controls">
@@ -90,32 +90,35 @@
           <div class="hero-unit">
             <h1>Broster Client</h1>
           </div>
+        </div>
+        <div class="span3">
           <form>
             <fieldset>
               <div class="control-group">
-              <label>Stream from the microphone</label>
-              <div class="controls">
-                <button class="btn btn-danger" id="record-audio"><i class="icon-facetime-video"></i> Record</button>
-              </div>
-              </div>
-              <div class="control-group">
-                <label>Choose a file to play</label>
                 <div class="controls">
-                  <input type="file" id="file" accept="audio/*">
-                </div>
-                <div class="controls">
+                  <button class="btn btn-danger" id="record-audio"><i class="icon-facetime-video"></i> Record</button>
                   <button class="btn btn-success" id="play-audio"><i class="icon-play"></i> Play</button>
-                  <button class="btn" id="metadata">Read Metadata</button>
-                </div>
-              </div>
-              <div class="control-group">
-                <label>Stop Streaming</label>
-                <div class="controls">
                   <button class="btn" id="stop"><i class="icon-stop"></i> Stop</button>
                 </div>
               </div>
+            </fieldset>
+          </form>
+          <div class="playlist">
+            <div class="playlist-table" style="display: none;">
+              <table class="files-table table table-striped table-bordered table-hover table-condensed">
+                <tr><th></th><th>Title</th><th>Artist</th><th>Duration</th></tr>
+              </table>
+            </div> 
+            <div class="playlist-input">
+              Choose a files to play:
+              <input type="file" id="files" accept="audio/*" multiple="multiple">
+            </div>
+          </div>
+        </div>
+        <div class="span3">
+          <form>
+            <fieldset>
               <div class="control-group">
-                <label>Send metadata</label>
                 <div class="controls">
                   <label class="control-label" for="artist">Artist</label>
                   <input id="artist" type="text">
@@ -125,7 +128,7 @@
                   <input id="title" type="text">
                 </div>
                 <div class="controls">
-                  <button class="btn" id="send-metadata">Send</button>
+                  <button class="btn" id="send-metadata">Send Metadata</button>
                 </div>
               </div>
             </fieldset>

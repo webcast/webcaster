@@ -2,7 +2,8 @@ navigator.getUserMedia  = navigator.getUserMedia || navigator.webkitGetUserMedia
 
 // Configuration
 var wsUri = "ws://localhost:8080/mount";
-var file;
+var playlistFiles = [];
+var playlistPosition = -1;
 var bitrate = 128;
 var bitrates = [ 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320 ];
 var samplerate = 44100;
@@ -15,7 +16,7 @@ var webcast;
 var passThrough = false;
 var useAsynchronous = false;
 var useMad = false;
-var loop = false;
+var loop = true;
 var audioSource;
 
 function createAudioContext() {
@@ -81,6 +82,21 @@ function createEncoder(inputSamplerate) {
   return enc;
 }
 
+function sendfileMetadata(file) {
+  file.readTaglibMetadata(function (data) {
+    if (!webcast) {
+      return;
+    }
+
+    if (data.metadata) {
+      webcast.sendMetadata({
+        title: data.metadata.title,
+        artist: data.metadata.artist
+      });
+    }
+  });
+}
+
 function createWebcastNode(source) {
   webcast = new Webcast.Node({
     url: wsUri,
@@ -106,6 +122,12 @@ function createMadSource() {
   var format;
   var handler;
   var create = function () {
+    var file = pickFile();
+    if (!file) {
+      return;
+    }
+    sendfileMetadata(file);
+
     file.createMadDecoder(function (decoder) {
       var fn = function (data, err) {
         if (!socket.isOpen() || err) {
@@ -115,7 +137,7 @@ function createMadSource() {
 
           enc.close(function (data) {
             if (socket.isOpen() && loop) {
-              socket.send(data);
+              socket.sendData(data);
               create();
             }
           });
@@ -152,16 +174,23 @@ function createMadSource() {
   });
 }
 
+// TODO: update for playlist..
 function createAudioSource() {
   killWebcast();
   createAudioContext();
 
   audioSource = new Audio();
 
+  var file = pickFile();
+  if (!file) {
+    return;
+  }
+  sendfileMetadata(file);
+
   audioSource.src = URL.createObjectURL(file);
   audioSource.controls = true;
   audioSource.autoplay = false;
-  audioSource.loop = true;
+  audioSource.loop = false;
 
   audioSource.addEventListener("canplay", function () {
     var source = audioContext.createMediaElementSource(audioSource);
@@ -170,6 +199,83 @@ function createAudioSource() {
   }, false);
 
   $("#player").append(audioSource);
+}
+
+function pickFile(backward) {
+  $(".track-row").removeClass("success"); 
+
+  if (playlistFiles.length === 0) {
+    return;
+  }
+
+  playlistPosition += backward ? -1 : 1;
+
+  if (playlistPosition >= playlistFiles.length) {
+    if (loop) {
+      playlistPosition = 0;
+    } else {
+      return;
+    }
+  }
+
+  $(".track-row-" + (playlistPosition+1)).addClass("success");
+  var file = playlistFiles[playlistPosition]; 
+
+  return file;
+}
+
+function renderFilesTable(cb) {
+  var selectedFiles = $("#files")[0].files;
+  var i = 0;
+  var len = playlistFiles.length;
+  var fn = function () {
+    if (i>=selectedFiles.length) {
+      $(".playlist-table").show();
+      return cb();
+    }
+    playlistFiles.push(selectedFiles[i]);
+    selectedFiles[i].readTaglibMetadata(function (data) {
+      var time;
+      if (data.audio.length && data.audio.length != 0) {
+        var length = parseInt(data.audio.length);
+        var hours  = parseInt(length / 3600);
+        length %= 3600;
+        var minutes = parseInt(length / 60);
+        length %= 60;
+        var seconds = length;
+        if (minutes < 10) {
+          minutes = "0" + minutes;
+        }
+        if (seconds < 10) {
+          seconds = "0" + seconds;
+        }
+        time = minutes + ":" + seconds;
+        if (hours > 0) {
+          time = hours + ":" + time;
+        } 
+      } else {
+        time = "N/A";
+      }
+
+      var pos = len+i+1;
+      $(".files-table").append([
+        "<tr class='track-row track-row-" + pos + "'>",
+          "<td>" + pos                  + "</td>",
+          "<td>" + data.metadata.title  + "</td>",
+          "<td>" + data.metadata.artist + "</td>",
+          "<td>" + time                 + "</td>",
+        "</tr>"
+      ].join(""));
+
+      i += 1;
+      setTimeout(fn, 0);
+    });
+  };
+  fn(0);
+}
+
+function clearFilesInput() {
+  $("#files").val("");
 }
 
 function init() {
@@ -188,14 +294,6 @@ function init() {
     } else {
       createAudioSource();
     }
-  });
-
-  $("#metadata").click(function (e) {
-    e.preventDefault();
-    file.readTaglibMetadata(function (data) {
-      $("#artist").val(data.metadata.artist);
-      $("#title").val(data.metadata.title);
-    });
   });
 
   var el, i, v;
@@ -250,8 +348,8 @@ function init() {
     killWebcast();
   });
 
-  $("#file").change(function () {
-    file = this.files[0];
+  $("#files").change(function () {
+    renderFilesTable(clearFilesInput);
   });
 
   $("#asynchronous").change(function () {

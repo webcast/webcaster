@@ -173,6 +173,14 @@ function createAudioSource() {
 }
 
 function init() {
+  var test = new Audio;
+  if (test.canPlayType("audio/mpeg") === "") {
+    useMad = true;
+    passThrough = false;
+    $("#mad").attr({checked: "checked", disabled: "disabled"});
+    $("#passThrough").removeAttr("checked").attr({disabled: "disabled"});
+  }
+
   $("#play-audio").click(function(e) {
     e.preventDefault();
     if (useMad) {

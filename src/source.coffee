@@ -1,7 +1,11 @@
-class Broster.Source extends Backbone.Events
+class Broster.Source
+  _.extend @prototype, Backbone.Events
+
   constructor: ({@model}) ->
 
   prepare: (cb) ->
+    @model.set position: 0.0
+
     old = @encoder
 
     switch @model.get("encoder")
@@ -41,107 +45,3 @@ class Broster.Source extends Backbone.Events
 
   sendMetadata: (data) ->
     @webcast?.sendMetadata data
-
-class Broster.Source.Mad extends Broster.Source
-  prepare: ({audio, file}, cb) ->
-    @samplerate = audio.samplerate
-    super =>
-      clearInterval @handler if @handler?
-      @handler = null
-
-      file.createMadDecoder (decoder) =>
-        @decoder = decoder
-
-        return cb() if @webcast?
-
-        @webcast = new Webcast.Socket
-          url  :  @model.get("uri")
-          mime :  @encoder.mime
-          info :  @encoder.info
-    
-        @webcast.addEventListener "open", cb
-
-  play: ->
-    super
-    @decoder.decodeFrame @processFrame
-      
-  processFrame: (data, err) =>
-    return if err?
-
-    data = data.slice 0, @model.get("channels")
-
-    @encoder.encode data, (encoded) =>
-      @webcast?.sendData encoded
-
-    return if @handler?
-  
-    format = @decoder.getCurrentFormat()
-    frameDuration = 1000*parseFloat(data[0].length)/format.sampleRate
-
-    fn = =>
-      @decoder.decodeFrame @processFrame
-    @handler = setInterval fn, frameDuration
-
-  close: (cb) ->
-    clearInterval @handler if @handler?
-
-    encoder = @encoder
-    webcast = @webcast
-    @handler = @webcast = @handler = null
-
-    return cb() unless encoder?
-    encoder.close (data) ->
-      webcast?.sendData data
-      webcast?.close()
-      cb()
-
-class Broster.Source.AudioElement extends Broster.Source
-  constructor: ->
-    super
-
-    if typeof webkitAudioContext != "undefined"
-      @context = new webkitAudioContext
-    else
-      @context = new AudioContext
-
-    @samplerate = @context.sampleRate
-
-  prepare: ({file}, cb) ->
-    super =>
-      unless @webcast?
-        @webcast = new Webcast.Node
-          url     : @model.get("uri")
-          encoder : @encoder
-          context : @context,
-          options :
-            passThrough : @model.get("passThrough")
-
-        @webcast.connect @context.destination
-
-      @source?.disconnect()
-      @audio?.remove()
-
-      # This needs to be set for each track in case
-      # samplerate has changed
-      @webcast.encoder = @encoder
-
-      @audio = new Audio URL.createObjectURL(file)
-      @audio.controls = false
-      @audio.autoplay = false
-      @audio.loop     = false
-
-      @audio.addEventListener "canplay", cb
-
-  play: ->
-    super
-    @source = @context.createMediaElementSource @audio
-    @source.connect @webcast
-    @audio.play()
-
-  close: (cb) ->
-    @webcast?.close()
-    @source?.disconnect()
-    @audio?.pause()
-    @audio?.remove()
-    @context = @source = @audio = @webcast = null
-    cb()

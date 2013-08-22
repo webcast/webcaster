@@ -1,4 +1,6 @@
 class Broster.Player
+  _.extend @prototype, Backbone.Events
+
   constructor: ({@model}) ->
 
   selectFile: (options = {}) ->
@@ -22,28 +24,37 @@ class Broster.Player
 
     file
 
-  play: (file, cb) ->
-    unless @source?
-      if @model.get("mad")
-        @source = new Broster.Source.Mad
-          model: @model
-      else
-        @source = new Broster.Source.AudioElement
-          model: @model
+  getSource: ->
+    return @source if @source?
 
-    @source.prepare file, =>
-      @source.play file
+    if @model.get("mad")
+      @source = new Broster.Source.Mad
+        model: @model
+    else
+      @source = new Broster.Source.AudioElement
+        model: @model
+
+    @listenTo @source, "ended", =>
+      @trigger "ended"
+
+    @source
+
+  play: (file, cb) ->
+    @getSource().prepare file, =>
+      @getSource().play file
       @playing = true
       cb?()
 
   stop: (cb) ->
     @model.set fileIndex: -1
 
-    source = @source
+    source = @getSource()
+
     @source = null
     @playing = false
 
     return cb() unless source?
+    @stopListening source
     source.close cb
 
   sendMetadata: (data) ->

@@ -5,6 +5,7 @@ class Broster.Model extends Backbone.Model
     attributes = _.defaults attributes,
       files: []
       fileIndex: -1
+      position: 0.0
       uri: "ws://localhost:8080/mount"
       bitrate: 128
       bitrates: [ 8, 16, 24, 32, 40, 48, 56,

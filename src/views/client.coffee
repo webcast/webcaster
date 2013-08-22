@@ -11,6 +11,11 @@ class Broster.View.Client extends Backbone.View
   initialize: (options = {}) ->
     @player = options.player
 
+    @listenTo @player, "ended", ->
+      @$(".track-row").removeClass "success"
+      return unless @model.get("loop")
+      @play()
+
     @model.on "change:fileIndex", =>
       @$(".track-row").removeClass "success"
       @$(".track-row-#{@model.get("fileIndex")}").addClass "success"

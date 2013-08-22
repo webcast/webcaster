@@ -29,6 +29,7 @@
       attributes = _.defaults(attributes, {
         files: [],
         fileIndex: -1,
+        position: 0.0,
         uri: "ws://localhost:8080/mount",
         bitrate: 128,
         bitrates: [8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320],
@@ -78,6 +79,8 @@
 
   Broster.Player = (function() {
 
+    _.extend(Player.prototype, Backbone.Events);
+
     function Player(_arg) {
       this.model = _arg.model;
     }
@@ -104,21 +107,28 @@
       return file;
     };
 
+    Player.prototype.getSource = function() {
+      var _this = this;
+      if (this.source != null) return this.source;
+      if (this.model.get("mad")) {
+        this.source = new Broster.Source.Mad({
+          model: this.model
+        });
+      } else {
+        this.source = new Broster.Source.AudioElement({
+          model: this.model
+        });
+      }
+      this.listenTo(this.source, "ended", function() {
+        return _this.trigger("ended");
+      });
+      return this.source;
+    };
+
     Player.prototype.play = function(file, cb) {
       var _this = this;
-      if (this.source == null) {
-        if (this.model.get("mad")) {
-          this.source = new Broster.Source.Mad({
-            model: this.model
-          });
-        } else {
-          this.source = new Broster.Source.AudioElement({
-            model: this.model
-          });
-        }
-      }
-      return this.source.prepare(file, function() {
-        _this.source.play(file);
+      return this.getSource().prepare(file, function() {
+        _this.getSource().play(file);
         _this.playing = true;
         return typeof cb === "function" ? cb() : void 0;
       });
@@ -129,10 +139,11 @@
       this.model.set({
         fileIndex: -1
       });
-      source = this.source;
+      source = this.getSource();
       this.source = null;
       this.playing = false;
       if (source == null) return cb();
+      this.stopListening(source);
       return source.close(cb);
     };
 
@@ -145,9 +156,9 @@
 
   })();
 
-  Broster.Source = (function(_super) {
+  Broster.Source = (function() {
 
-    __extends(Source, _super);
+    _.extend(Source.prototype, Backbone.Events);
 
     function Source(_arg) {
       this.model = _arg.model;
@@ -155,6 +166,9 @@
 
     Source.prototype.prepare = function(cb) {
       var encoder, old;
+      this.model.set({
+        position: 0.0
+      });
       old = this.encoder;
       switch (this.model.get("encoder")) {
         case "mp3":
@@ -202,78 +216,7 @@
 
     return Source;
 
-  })(Backbone.Events);
-
-  Broster.Source.Mad = (function(_super) {
-
-    __extends(Mad, _super);
-
-    function Mad() {
-      this.processFrame = __bind(this.processFrame, this);
-      Mad.__super__.constructor.apply(this, arguments);
-    }
-
-    Mad.prototype.prepare = function(_arg, cb) {
-      var audio, file,
-        _this = this;
-      audio = _arg.audio, file = _arg.file;
-      this.samplerate = audio.samplerate;
-      return Mad.__super__.prepare.call(this, function() {
-        if (_this.handler != null) clearInterval(_this.handler);
-        _this.handler = null;
-        return file.createMadDecoder(function(decoder) {
-          _this.decoder = decoder;
-          if (_this.webcast != null) return cb();
-          _this.webcast = new Webcast.Socket({
-            url: _this.model.get("uri"),
-            mime: _this.encoder.mime,
-            info: _this.encoder.info
-          });
-          return _this.webcast.addEventListener("open", cb);
-        });
-      });
-    };
-
-    Mad.prototype.play = function() {
-      Mad.__super__.play.apply(this, arguments);
-      return this.decoder.decodeFrame(this.processFrame);
-    };
-
-    Mad.prototype.processFrame = function(data, err) {
-      var fn, format, frameDuration,
-        _this = this;
-      if (err != null) return;
-      data = data.slice(0, this.model.get("channels"));
-      this.encoder.encode(data, function(encoded) {
-        var _ref;
-        return (_ref = _this.webcast) != null ? _ref.sendData(encoded) : void 0;
-      });
-      if (this.handler != null) return;
-      format = this.decoder.getCurrentFormat();
-      frameDuration = 1000 * parseFloat(data[0].length) / format.sampleRate;
-      fn = function() {
-        return _this.decoder.decodeFrame(_this.processFrame);
-      };
-      return this.handler = setInterval(fn, frameDuration);
-    };
-
-    Mad.prototype.close = function(cb) {
-      var encoder, webcast;
-      if (this.handler != null) clearInterval(this.handler);
-      encoder = this.encoder;
-      webcast = this.webcast;
-      this.handler = this.webcast = this.handler = null;
-      if (encoder == null) return cb();
-      return encoder.close(function(data) {
-        if (webcast != null) webcast.sendData(data);
-        if (webcast != null) webcast.close();
-        return cb();
-      });
-    };
-
-    return Mad;
-
-  })(Broster.Source);
+  })();
 
   Broster.Source.AudioElement = (function(_super) {
 
@@ -313,6 +256,9 @@
         _this.audio.controls = false;
         _this.audio.autoplay = false;
         _this.audio.loop = false;
+        _this.audio.addEventListener("ended", function() {
+          return _this.trigger("ended");
+        });
         return _this.audio.addEventListener("canplay", cb);
       });
     };
@@ -338,6 +284,89 @@
 
   })(Broster.Source);
 
+  Broster.Source.Mad = (function(_super) {
+
+    __extends(Mad, _super);
+
+    function Mad() {
+      this.processFrame = __bind(this.processFrame, this);
+      Mad.__super__.constructor.apply(this, arguments);
+    }
+
+    Mad.prototype.prepare = function(_arg, cb) {
+      var audio, file,
+        _this = this;
+      audio = _arg.audio, file = _arg.file;
+      this.samplerate = audio.samplerate;
+      return Mad.__super__.prepare.call(this, function() {
+        if (_this.handler != null) clearInterval(_this.handler);
+        _this.handler = null;
+        return file.createMadDecoder(function(decoder) {
+          _this.decoder = decoder;
+          if (_this.webcast != null) return cb();
+          _this.webcast = new Webcast.Socket({
+            url: _this.model.get("uri"),
+            mime: _this.encoder.mime,
+            info: _this.encoder.info
+          });
+          return _this.webcast.addEventListener("open", cb);
+        });
+      });
+    };
+
+    Mad.prototype.play = function() {
+      Mad.__super__.play.apply(this, arguments);
+      return this.decoder.decodeFrame(this.processFrame);
+    };
+
+    Mad.prototype.processFrame = function(data, err) {
+      var fn, format,
+        _this = this;
+      if (err != null) {
+        if (this.handler != null) clearInterval(this.handler);
+        this.trigger("ended");
+        return;
+      }
+      data = data.slice(0, this.model.get("channels"));
+      this.encoder.encode(data, function(encoded) {
+        var _ref;
+        return (_ref = _this.webcast) != null ? _ref.sendData(encoded) : void 0;
+      });
+      if (this.handler != null) {
+        this.model.set({
+          position: this.model.get("position") + this.frameDuration
+        });
+        return;
+      }
+      format = this.decoder.getCurrentFormat();
+      this.frameDuration = 1000 * parseFloat(data[0].length) / format.sampleRate;
+      fn = function() {
+        return _this.decoder.decodeFrame(_this.processFrame);
+      };
+      this.handler = setInterval(fn, frameDuration);
+      return this.model.set({
+        position: this.model.get("position") + this.frameDuration
+      });
+    };
+
+    Mad.prototype.close = function(cb) {
+      var encoder, webcast;
+      if (this.handler != null) clearInterval(this.handler);
+      encoder = this.encoder;
+      webcast = this.webcast;
+      this.handler = this.webcast = this.handler = this.frameDuration = null;
+      if (encoder == null) return cb();
+      return encoder.close(function(data) {
+        if (webcast != null) webcast.sendData(data);
+        if (webcast != null) webcast.close();
+        return cb();
+      });
+    };
+
+    return Mad;
+
+  })(Broster.Source);
+
   Broster.View.Client = (function(_super) {
 
     __extends(Client, _super);
@@ -360,6 +389,11 @@
       var _this = this;
       if (options == null) options = {};
       this.player = options.player;
+      this.listenTo(this.player, "ended", function() {
+        this.$(".track-row").removeClass("success");
+        if (!this.model.get("loop")) return;
+        return this.play();
+      });
       return this.model.on("change:fileIndex", function() {
         _this.$(".track-row").removeClass("success");
         return _this.$(".track-row-" + (_this.model.get("fileIndex"))).addClass("success");

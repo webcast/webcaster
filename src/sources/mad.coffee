@@ -85,7 +85,7 @@ class Webcaster.Source.Mad extends Webcaster.Source
 
   play: ->
     super
-    @oscillator.start 0.05
+    @oscillator.start 0
     
   stop: ->
     if @handler?

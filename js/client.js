@@ -407,7 +407,7 @@
 
     Mad.prototype.play = function() {
       Mad.__super__.play.apply(this, arguments);
-      return this.oscillator.start(0.05);
+      return this.oscillator.start(0);
     };
 
     Mad.prototype.stop = function() {

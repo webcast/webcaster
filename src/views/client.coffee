@@ -1,4 +1,4 @@
-class Broster.View.Client extends Backbone.View
+class Webcaster.View.Client extends Backbone.View
   events:
     "click #record-audio"   : "onRecord"
     "click #play-audio"     : "onPlay"
@@ -29,7 +29,7 @@ class Broster.View.Client extends Backbone.View
 
     _.each files, ({file, audio, metadata}, index) =>
       if audio?.length != 0
-        time = Broster.prettifyTime audio.length
+        time = Webcaster.prettifyTime audio.length
       else
         time = "N/A"
 

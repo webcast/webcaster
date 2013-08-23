@@ -1,4 +1,4 @@
-class Broster.View.Settings extends Backbone.View
+class Webcaster.View.Settings extends Backbone.View
   events:
     "change #uri"           : "onUri"
     "change input.encoder"  : "onEncoder"
@@ -7,7 +7,6 @@ class Broster.View.Settings extends Backbone.View
     "change #asynchronous"  : "onAsynchronous"
     "change #passThrough"   : "onPassThrough"
     "change #loop"          : "onLoop"
-    "change #mad"           : "onMad"
     "submit"                : "onSubmit"
 
   render: ->
@@ -26,16 +25,7 @@ class Broster.View.Settings extends Backbone.View
         appendTo @$("#bitrate")
 
     if (new Audio).canPlayType("audio/mpeg") == ""
-      @model.set
-        mad:         true
-        passThrough: false
-
-      @$("#mad").attr
-        checked:  "checked"
-        disabled: "disabled"
-
-      @$("#passThrough").removeAttr("checked").attr
-        disabled: "disabled"
+      @model.set mad: true
 
     this
 
@@ -56,25 +46,6 @@ class Broster.View.Settings extends Backbone.View
 
   onLoop: (e) ->
     @model.set loop: $(e.target).is(":checked")
-
-  onMad: (e) ->
-    checked = $(e.target).is(":checked")
-
-    @model.set mad: checked
-
-    if checked
-      @$("#file").attr
-        accept: "audio/mpeg"
-
-      @$("#passThrough").removeAttr("checked").attr
-        disabled: "disabled"
-
-      @model.set passThrough: false
-    else
-      @$("#file").attr
-        accept: "audio/*8"
-
-      @$("#passThrough").removeAttr "disabled"
 
   onSubmit: (e) ->
     e.preventDefault()

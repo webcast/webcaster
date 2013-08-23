@@ -1,4 +1,4 @@
-class Broster.View.Metadata extends Backbone.View
+class Webcaster.View.Metadata extends Backbone.View
   events:
     "click #send-metadata"  : "onMetadata"
     "submit"                : "onSubmit"

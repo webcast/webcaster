@@ -1,4 +1,4 @@
-class Broster.Model extends Backbone.Model
+class Webcaster.Model extends Backbone.Model
   constructor: (attributes, options) ->
     attributes ||= {}
 

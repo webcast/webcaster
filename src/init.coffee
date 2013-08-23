@@ -1,26 +1,26 @@
 $ ->
-  Broster.model = new Broster.Model
+  Webcaster.model = new Webcaster.Model
 
-  Broster.player = new Broster.Player
-    model : Broster.model
+  Webcaster.player = new Webcaster.Player
+    model : Webcaster.model
 
-  _.extend Broster,
-    model : Broster.model
+  _.extend Webcaster,
+    model : Webcaster.model
 
-    settings : new Broster.View.Settings
-      model : Broster.model
+    settings : new Webcaster.View.Settings
+      model : Webcaster.model
       el    : $("div.settings")
 
-    client : new Broster.View.Client
-      model  : Broster.model
-      player : Broster.player
+    client : new Webcaster.View.Client
+      model  : Webcaster.model
+      player : Webcaster.player
       el     : $("div.client")
 
-    metadata : new Broster.View.Metadata
-      model  : Broster.model
-      player : Broster.player
+    metadata : new Webcaster.View.Metadata
+      model  : Webcaster.model
+      player : Webcaster.player
       el     : $("div.metadata")
 
-  Broster.settings.render()
-  Broster.client.render()
-  Broster.metadata.render()
+  Webcaster.settings.render()
+  Webcaster.client.render()
+  Webcaster.metadata.render()

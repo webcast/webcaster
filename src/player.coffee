@@ -1,4 +1,4 @@
-class Broster.Player
+class Webcaster.Player
   _.extend @prototype, Backbone.Events
 
   constructor: ({@model}) ->
@@ -28,14 +28,16 @@ class Broster.Player
     return @source if @source?
 
     if @model.get("mad")
-      @source = new Broster.Source.Mad
+      @source = new Webcaster.Source.Mad
         model: @model
     else
-      @source = new Broster.Source.AudioElement
+      @source = new Webcaster.Source.AudioElement
         model: @model
 
     @listenTo @source, "ended", =>
       @trigger "ended"
+
+    @source.connect()
 
     @source
 

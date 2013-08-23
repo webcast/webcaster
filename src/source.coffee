@@ -1,12 +1,11 @@
-class Broster.Source
+class Webcaster.Source
   _.extend @prototype, Backbone.Events
 
   constructor: ({@model}) ->
-
-  prepare: (cb) ->
-    @model.set position: 0.0
-
-    old = @encoder
+    if typeof webkitAudioContext != "undefined"
+      @context = new webkitAudioContext
+    else
+      @context = new AudioContext
 
     switch @model.get("encoder")
       when "mp3"
@@ -19,11 +18,11 @@ class Broster.Source
       samplerate : @model.get("samplerate")
       bitrate    : @model.get("bitrate")
 
-    if @samplerate? and @model.get("samplerate") != @samplerate
+    if @model.get("samplerate") != @context.sampleRate
       @encoder = new Webcast.Encoder.Resample
         encoder    : @encoder
         type       : Samplerate.LINEAR,
-        samplerate : @samplerate
+        samplerate : @context.sampleRate
 
     if @model.get("asynchronous")
       @encoder = new Webcast.Encoder.Asynchronous
@@ -34,14 +33,32 @@ class Broster.Source
           "https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"
         ]
 
-    return cb() unless old?
+  connect: ->
+    @webcast = new Webcast.Node
+      url     : @model.get("uri")
+      encoder : @encoder
+      context : @context,
+      options :
+        passThrough : @model.get("passThrough")
 
-    old.close (data) ->
-      @websocket?.sendData data
-      cb()
+    @webcast.connect @context.destination
+
+  prepare: ->
+    @source?.disconnect()
+    @model.set position: 0.0
 
   play: ({metadata}) ->
+    @source.connect @webcast
     @sendMetadata metadata
+
+  stop: ->
+    @source?.disconnect()
+    @source = null
 
   sendMetadata: (data) ->
     @webcast?.sendMetadata data
+
+  close: ->
+    @stop()
+    @webcast?.close()
+    @webcast = null

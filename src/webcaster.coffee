@@ -1,4 +1,4 @@
-window.Broster = Broster =
+window.Webcaster = Webcaster =
   View: {}
 
   prettifyTime: (time) ->

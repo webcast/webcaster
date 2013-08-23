@@ -87,4 +87,4 @@ class Webcaster.Source.Mad extends Webcaster.Source
     
   stop: ->
     @oscillator?.stop 0
-    @oscillator = null
+    @oscillator = @encoderDone = null

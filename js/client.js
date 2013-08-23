@@ -405,7 +405,7 @@
     Mad.prototype.stop = function() {
       var _ref;
       if ((_ref = this.oscillator) != null) _ref.stop(0);
-      return this.oscillator = null;
+      return this.oscillator = this.encoderDone = null;
     };
 
     return Mad;

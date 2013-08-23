@@ -37,36 +37,15 @@ class Webcaster.Source.Mad extends Webcaster.Source
         return if err? # TODO: notify app?
 
         @format = @decoder.getCurrentFormat()
-        @frameDuration = 1000*parseFloat(data[0].length)/@format.sampleRate
-
-        fn = =>
-          @decoder.decodeFrame @processFrame
-
-        @handler = setInterval fn, @frameDuration
+        @bufferDuration = parseFloat(@bufferSize)/parseFloat(@context.sampleRate)
 
         @processFrame data, err
         cb()
 
-  processBuffer: (buf) =>
-    if @encodingDone
-      if @sourceDone
-        @trigger "ended"
-        @stop()
-        return
-   
-      @sourceDone = true
-
-    for i in [0..@encoder.channels-1]
-      channelData = buf.outputBuffer.getChannelData i
-      samples = Math.min @pending[i].length, channelData.length
-      channelData.set @pending[i].subarray(0, samples)
-      @pending[i] = @pending[i].subarray samples, @pending[i].length
-
   processFrame: (buffer, err) =>
     if err?
-      @encodingDone = true
-      @trigger "ended"
-      return @stop()
+      @encoderDone = true
+      return
 
     buffer = buffer.slice 0, @model.get("channels")
 
@@ -83,14 +62,29 @@ class Webcaster.Source.Mad extends Webcaster.Source
 
       @pending[i] = @concat @pending[i], buffer[i]
 
+    pendingDuration = parseFloat(@pending[0].length)/parseFloat(@context.sampleRate)
+
+    return if pendingDuration >= @bufferDuration
+
+    @decoder.decodeFrame @processFrame
+
+  processBuffer: (buf) =>
+    @decoder.decodeFrame @processFrame
+
+    if @encoderDone and @pending[0].length == 0
+      @trigger "ended"
+      return @stop()
+
+    for i in [0..@encoder.channels-1]
+      channelData = buf.outputBuffer.getChannelData i
+      samples = Math.min @pending[i].length, channelData.length
+      channelData.set @pending[i].subarray(0, samples)
+      @pending[i] = @pending[i].subarray samples, @pending[i].length
+
   play: ->
     super
     @oscillator.start 0
     
   stop: ->
-    if @handler?
-      clearInterval @handler
-      @handler = null
-
     @oscillator?.stop 0
-    @oscillator = @encodingDone = @sourceDone = null
+    @oscillator = null

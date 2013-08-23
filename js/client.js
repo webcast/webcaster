@@ -299,8 +299,8 @@
     __extends(Mad, _super);
 
     function Mad() {
-      this.processFrame = __bind(this.processFrame, this);
       this.processBuffer = __bind(this.processBuffer, this);
+      this.processFrame = __bind(this.processFrame, this);
       Mad.__super__.constructor.apply(this, arguments);
     }
 
@@ -347,29 +347,45 @@
       return file.createMadDecoder(function(decoder) {
         _this.decoder = decoder;
         return _this.decoder.decodeFrame(function(data, err) {
-          var fn;
           if (err != null) return;
           _this.format = _this.decoder.getCurrentFormat();
-          _this.frameDuration = 1000 * parseFloat(data[0].length) / _this.format.sampleRate;
-          fn = function() {
-            return _this.decoder.decodeFrame(_this.processFrame);
-          };
-          _this.handler = setInterval(fn, _this.frameDuration);
+          _this.bufferDuration = parseFloat(_this.bufferSize) / parseFloat(_this.context.sampleRate);
           _this.processFrame(data, err);
           return cb();
         });
       });
     };
 
+    Mad.prototype.processFrame = function(buffer, err) {
+      var data, i, pendingDuration, used, _ref, _ref2;
+      if (err != null) {
+        this.encoderDone = true;
+        return;
+      }
+      buffer = buffer.slice(0, this.model.get("channels"));
+      for (i = 0, _ref = buffer.length - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
+        if (this.format.sampleRate !== this.context.sampleRate) {
+          buffer[i] = this.concat(this.remaining[i], buffer[i]);
+          _ref2 = this.resamplers[i].process({
+            data: buffer[i],
+            ratio: parseFloat(this.context.sampleRate) / parseFloat(this.format.sampleRate)
+          }), data = _ref2.data, used = _ref2.used;
+          this.remaining[i] = buffer[i].subarray(used);
+          buffer[i] = data;
+        }
+        this.pending[i] = this.concat(this.pending[i], buffer[i]);
+      }
+      pendingDuration = parseFloat(this.pending[0].length) / parseFloat(this.context.sampleRate);
+      if (pendingDuration >= this.bufferDuration) return;
+      return this.decoder.decodeFrame(this.processFrame);
+    };
+
     Mad.prototype.processBuffer = function(buf) {
       var channelData, i, samples, _ref, _results;
-      if (this.encodingDone) {
-        if (this.sourceDone) {
-          this.trigger("ended");
-          this.stop();
-          return;
-        }
-        this.sourceDone = true;
+      this.decoder.decodeFrame(this.processFrame);
+      if (this.encoderDone && this.pending[0].length === 0) {
+        this.trigger("ended");
+        return this.stop();
       }
       _results = [];
       for (i = 0, _ref = this.encoder.channels - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
@@ -381,30 +397,6 @@
       return _results;
     };
 
-    Mad.prototype.processFrame = function(buffer, err) {
-      var data, i, used, _ref, _ref2, _results;
-      if (err != null) {
-        this.encodingDone = true;
-        this.trigger("ended");
-        return this.stop();
-      }
-      buffer = buffer.slice(0, this.model.get("channels"));
-      _results = [];
-      for (i = 0, _ref = buffer.length - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
-        if (this.format.sampleRate !== this.context.sampleRate) {
-          buffer[i] = this.concat(this.remaining[i], buffer[i]);
-          _ref2 = this.resamplers[i].process({
-            data: buffer[i],
-            ratio: parseFloat(this.context.sampleRate) / parseFloat(this.format.sampleRate)
-          }), data = _ref2.data, used = _ref2.used;
-          this.remaining[i] = buffer[i].subarray(used);
-          buffer[i] = data;
-        }
-        _results.push(this.pending[i] = this.concat(this.pending[i], buffer[i]));
-      }
-      return _results;
-    };
-
     Mad.prototype.play = function() {
       Mad.__super__.play.apply(this, arguments);
       return this.oscillator.start(0);
@@ -412,12 +404,8 @@
 
     Mad.prototype.stop = function() {
       var _ref;
-      if (this.handler != null) {
-        clearInterval(this.handler);
-        this.handler = null;
-      }
       if ((_ref = this.oscillator) != null) _ref.stop(0);
-      return this.oscillator = this.encodingDone = this.sourceDone = null;
+      return this.oscillator = null;
     };
 
     return Mad;

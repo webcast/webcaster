@@ -5,8 +5,10 @@
     <meta charset="utf-8"/>
     <title>Webcaster Client</title>
     <link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.2/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.3/css/base/jquery.ui.all.min.css" rel="stylesheet" media="screen">
 
     <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.10.0/jquery.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.2/js/bootstrap.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
     <Script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>
@@ -16,6 +18,7 @@
     <script src="https://rawgithub.com/webcast/taglib.js/master/dist/taglib.js"></script>
     <script src="https://rawgithub.com/webcast/libsamplerate.js/master/dist/libsamplerate.js"></script>
     <script src="https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"></script>
+    <script src="js/webcast.js"></script>
     <script src="js/client.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
@@ -28,6 +31,12 @@
             <form>
               <fieldset>
                 <legend>Setup</legend>
+                <div class="control-group">
+                  <div class="controls">
+                    <button class="btn btn-primary start-stream">Start streaming</button>
+                    <button class="btn btn-danger stop-stream" style="display: none;">Stop streaming</button>
+                  </div>
+                </div>
                 <div class="control-group">
                   <label>Encoder</label>
                   <div class="controls">
@@ -42,11 +51,11 @@
                 <div class="control-group">
                   <label>Samplerate</label>
                   <div class="controls">
-                    <select id="samplerate"></select>
+                    <select class="samplerate"></select>
                   </div>
                   <label>Bitrate</label>
                   <div class="controls">
-                    <select id="bitrate"></select>
+                    <select class="bitrate"></select>
                   </div>
                   <label>Channels</label>
                   <div class="controls">
@@ -61,23 +70,18 @@
                 <div class="control-group">
                   <label>Stream destination URI</label>
                   <div class="controls">
-                    <input id="uri" type="text" size="40" value="ws://localhost:8080/mount">
+                    <input class="uri" type="text" size="40" value="ws://localhost:8080/mount">
                   </div>
                 </div>
                 <div class="control-group">
                   <div class="controls">
                     <label class="checkbox">
-                      <input type="checkbox" id="passThrough"> Play stream locally
+                      <input type="checkbox" class="passThrough"> Play stream locally
                     </label>
                   </div>
                   <div class="controls">
                     <label class="checkbox">
-                      <input type="checkbox" id="loop" checked="checked"> Repeat playlist
-                    </label>
-                  </div>
-                  <div class="controls">
-                    <label class="checkbox">
-                      <input type="checkbox" id="asynchronous"> Use asynchronous worker
+                      <input type="checkbox" class"asynchronous"> Use asynchronous worker
                     </label>
                   </div>
                 </div>
@@ -90,20 +94,16 @@
             <h1>Webcaster Client</h1>
           </div>
         </div>
-        <div class="span3 client">
+        <div class="span3 playlist-left">
           <form>
             <fieldset>
-              <div class="control-group">
+              <div class="control-group" align="center">
                 <div class="controls">
-                  <button class="btn btn-danger" id="record-audio" class="player-control"><i class="icon-facetime-video"></i> Record</button>
-                  <button class="btn btn-success" id="play-audio" class="player-control"><i class="icon-play"></i> Play</button>
-                  <button class="btn" id="stop" class="player-control"><i class="icon-stop"></i> Stop</button>
-                </div>
-              </div>
-              <div class="control-group">
-                <div class="controls">
-                  <button class="btn" id="previous" class="player-control"><i class="icon-fast-backward"></i> Previous</button>
-                  <button class="btn" id="next" class="player-control"><i class="icon-fast-forward"></i> Next</button>
+                  <button class="btn btn-success play-audio player-control"><i class="icon-play"></i></button>
+                  <button class="btn previous player-control"><i class="icon-fast-backward"></i></button>
+                  <button class="btn next player-control"><i class="icon-fast-forward"></i></button>
+                  <button class="btn btn-danger stop player-control"><i class="icon-stop"></i></button>
+                  <button class="btn btn-info metadata player-control"><i class="icon-tags"></i></button>
                 </div>
               </div>
             </fieldset>
@@ -116,29 +116,70 @@
             </div> 
             <div class="playlist-input">
               Add files to playlist:
-              <input type="file" id="files" accept="audio/*" multiple="multiple">
+              <input type="file" class="files" accept="audio/*" multiple="multiple">
             </div>
           </div>
-        </div>
-        <div class="span3 metadata">
           <form>
             <fieldset>
               <div class="control-group">
                 <div class="controls">
-                  <label class="control-label" for="artist">Artist</label>
-                  <input id="artist" type="text">
-                </div>
+                  <label class="checkbox">
+                    <input type="checkbox" class="passThrough"> Play stream locally
+                  </label>
+                 </div>
                 <div class="controls">
-                  <label class="control-label" for="title">Title</label>
-                  <input id="title" type="text">
-                </div>
-                <div class="controls">
-                  <button class="btn" id="send-metadata">Send Metadata</button>
+                  <label class="checkbox">
+                    <input type="checkbox" class="loop" checked="checked"> Repeat playlist
+                  </label>
                 </div>
               </div>
             </fieldset>
           </form>
-          <div id="output"></div>
+        </div>
+        <div class="span2 controls">
+          <div class="slider"></div>
+        </div>
+        <div class="span3 playlist-right">
+          <form>
+            <fieldset>
+              <div class="control-group" align="center">
+                <div class="controls">
+                  <button class="btn btn-success play-audio player-control"><i class="icon-play"></i></button>
+                  <button class="btn previous player-control"><i class="icon-fast-backward"></i></button>
+                  <button class="btn next player-control"><i class="icon-fast-forward"></i></button>
+                  <button class="btn btn-danger stop player-control"><i class="icon-stop"></i></button>
+                  <button class="btn btn-info metadata player-control"><i class="icon-tags"></i></button>
+                </div>
+              </div>
+            </fieldset>
+          </form>
+          <div class="playlist">
+            <div class="playlist-table" style="display: none;">
+              <table class="files-table table table-striped table-bordered table-hover table-condensed">
+                <tr><th></th><th>Title</th><th>Artist</th><th>Duration</th></tr>
+              </table>
+            </div>
+            <div class="playlist-input">
+              Add files to playlist:
+              <input type="file" class="files" accept="audio/*" multiple="multiple">
+            </div>
+          </div>
+          <form>
+            <fieldset>
+              <div class="control-group">
+                <div class="controls">
+                  <label class="checkbox">
+                    <input type="checkbox" class="passThrough"> Play stream locally
+                  </label>
+                 </div>
+                <div class="controls">
+                  <label class="checkbox">
+                    <input type="checkbox" class="loop" checked="checked"> Repeat playlist
+                  </label>
+                </div>
+              </div>
+            </fieldset>
+          </form>
         </div>
       </div>
     </div>

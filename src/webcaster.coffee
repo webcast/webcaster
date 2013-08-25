@@ -1,5 +1,7 @@
 window.Webcaster = Webcaster =
   View: {}
+  Model: {}
+  Source: {}
 
   prettifyTime: (time) ->
     hours   = parseInt time / 3600

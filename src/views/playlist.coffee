@@ -1,17 +1,19 @@
-class Webcaster.View.Client extends Backbone.View
+class Webcaster.View.Playlist extends Backbone.View
   events:
-    "click #record-audio"   : "onRecord"
-    "click #play-audio"     : "onPlay"
-    "click #previous"       : "onPrevious"
-    "click #next"           : "onNext"
-    "click #stop"           : "onStop"
-    "change #files"         : "onFiles"
+    "click .record-audio"   : "onRecord"
+    "click .play-audio"     : "onPlay"
+    "click .previous"       : "onPrevious"
+    "click .next"           : "onNext"
+    "click .stop"           : "onStop"
+    "click .metadata"       : "onMetadata"
+    "change .files"         : "onFiles"
+    "change .passThrough"   : "onPassThrough"
+    "change .loop"          : "onLoop"
     "submit"                : "onSubmit"
 
-  initialize: (options = {}) ->
-    @player = options.player
-
-    @listenTo @player, "ended", ->
+  initialize: ->
+    # TODO
+    @listenTo Webcaster.node, "ended", ->
       @$(".track-row").removeClass "success"
       return unless @model.get("loop")
       @play()
@@ -19,6 +21,9 @@ class Webcaster.View.Client extends Backbone.View
     @model.on "change:fileIndex", =>
       @$(".track-row").removeClass "success"
       @$(".track-row-#{@model.get("fileIndex")}").addClass "success"
+
+    if (new Audio).canPlayType("audio/mpeg") == ""
+      @model.set mad: true
 
   render: ->
     files = @model.get "files"
@@ -54,8 +59,10 @@ class Webcaster.View.Client extends Backbone.View
   onRecord: ->
 
   play: (options) ->
+    @file = @model.selectFile options
+
     @$(".play-control").attr disabled: "disabled"
-    @player.play @player.selectFile(options), =>
+    @model.play @file, =>
       @$(".play-control").removeAttr "disabled"
 
   onPlay: (e) ->
@@ -64,13 +71,13 @@ class Webcaster.View.Client extends Backbone.View
 
   onPrevious: (e) ->
     e.preventDefault()
-    return unless @player.playing
+    return unless @file?
 
     @play backward: true
 
   onNext: (e) ->
     e.preventDefault()
-    return unless @player.playing
+    return unless @file?
 
     @play()
 
@@ -78,17 +85,28 @@ class Webcaster.View.Client extends Backbone.View
     e.preventDefault()
 
     @$(".track-row").removeClass "success"
-    @$(".play-control").attr disabled: "disabled"
-    @player.stop =>
-      @$(".play-control").removeAttr "disabled"
+    @model.stop()
+    @file = null
+
+  onMetadata: (e) ->
+    e.preventDefault()
+    return unless @file?
+
+    @model.sendMetadata @file
 
   onFiles: ->
-    files = @$("#files")[0].files
-    @$("#files").attr disabled: "disabled"
+    files = @$(".files")[0].files
+    @$(".files").attr disabled: "disabled"
 
     @model.appendFiles files, =>
-      @$("#files").removeAttr("disabled").val ""
+      @$(".files").removeAttr("disabled").val ""
       @render()
+
+  onPassThrough: (e) ->
+    @model.set passThrough: $(e.target).is(":checked")
+
+  onLoop: (e) ->
+    @model.set loop: $(e.target).is(":checked")
 
   onSubmit: (e) ->
     e.preventDefault()

@@ -1,11 +1,12 @@
 (function() {
   var Webcaster,
     __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
   window.Webcaster = Webcaster = {
     View: {},
+    Model: {},
+    Source: {},
     prettifyTime: function(time) {
       var hours, minutes, result, seconds;
       hours = parseInt(time / 3600);
@@ -20,32 +21,157 @@
     }
   };
 
-  Webcaster.Model = (function(_super) {
+  Webcaster.Node = (function() {
 
-    __extends(Model, _super);
+    _.extend(Node.prototype, Backbone.Events);
 
-    function Model(attributes, options) {
-      attributes || (attributes = {});
-      attributes = _.defaults(attributes, {
-        files: [],
-        fileIndex: -1,
-        position: 0.0,
-        uri: "ws://localhost:8080/mount",
-        bitrate: 128,
-        bitrates: [8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320],
-        samplerate: 44100,
-        samplerates: [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000],
-        channels: 2,
-        encoder: "mp3",
-        passThrough: false,
-        asynchronous: false,
-        mad: false,
-        loop: true
-      });
-      Model.__super__.constructor.call(this, attributes, options);
+    function Node(_arg) {
+      this.model = _arg.model;
+      if (typeof webkitAudioContext !== "undefined") {
+        this.context = new webkitAudioContext;
+      } else {
+        this.context = new AudioContext;
+      }
+      this.webcast = this.context.createWebcastSource(4096, 2, this.model.get("passThrough"));
+      this.webcast.connect(this.context.destination);
     }
 
-    Model.prototype.appendFiles = function(newFiles, cb) {
+    Node.prototype.startStream = function() {
+      var encoder;
+      switch (this.model.get("encoder")) {
+        case "mp3":
+          encoder = Webcast.Encoder.Mp3;
+          break;
+        case "raw":
+          encoder = Webcast.Encoder.Raw;
+      }
+      this.encoder = new encoder({
+        channels: this.model.get("channels"),
+        samplerate: this.model.get("samplerate"),
+        bitrate: this.model.get("bitrate")
+      });
+      if (this.model.get("samplerate") !== this.context.sampleRate) {
+        this.encoder = new Webcast.Encoder.Resample({
+          encoder: this.encoder,
+          type: Samplerate.LINEAR,
+          samplerate: this.context.sampleRate
+        });
+      }
+      if (this.model.get("asynchronous")) {
+        this.encoder = new Webcast.Encoder.Asynchronous({
+          encoder: this.encoder,
+          scripts: ["https://rawgithub.com/webcast/libsamplerate.js/master/dist/libsamplerate.js", "https://rawgithub.com/savonet/shine/master/js/dist/libshine.js", "https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"]
+        });
+      }
+      return this.webcast.connectSocket(this.encoder, this.model.get("uri"));
+    };
+
+    Node.prototype.stopStream = function() {
+      return this.webcast.close();
+    };
+
+    Node.prototype.createAudioSource = function(file, cb) {
+      var audio,
+        _this = this;
+      if (typeof audio !== "undefined" && audio !== null) audio.pause();
+      if (typeof audio !== "undefined" && audio !== null) audio.remove();
+      audio = new Audio(URL.createObjectURL(file));
+      audio.controls = false;
+      audio.autoplay = false;
+      audio.loop = false;
+      audio.addEventListener("ended", function() {});
+      return audio.addEventListener("canplay", function() {
+        var source;
+        source = _this.context.createMediaElementSource(audio);
+        source.play = function() {
+          return audio.play();
+        };
+        source.stop = function() {
+          audio.pause();
+          return audio.remove();
+        };
+        return cb(source);
+      });
+    };
+
+    Node.prototype.createMadSource = function(file, cb) {
+      var _this = this;
+      return file.createMadDecoder(function(decoder, format) {
+        var fn, source;
+        source = _this.context.createMadSource(1024, decoder, format);
+        source.play = function() {
+          return source.start(0);
+        };
+        fn = source.stop;
+        source.stop = function() {
+          return fn.call(source, 0);
+        };
+        return cb(source);
+      });
+    };
+
+    Node.prototype.createSource = function(_arg, mad, cb) {
+      var file, _ref;
+      file = _arg.file;
+      if ((_ref = this.source) != null) _ref.disconnect();
+      if (/\.mp3$/i.test(file.name) && mad) {
+        return this.createMadSource(file, cb);
+      } else {
+        return this.createAudioSource(file, cb);
+      }
+    };
+
+    Node.prototype.sendMetadata = function(data) {
+      return this.webcast.sendMetadata(data);
+    };
+
+    Node.prototype.close = function(cb) {
+      return this.webcast.close(cb);
+    };
+
+    return Node;
+
+  })();
+
+  Webcaster.Model.Controls = (function(_super) {
+
+    __extends(Controls, _super);
+
+    function Controls() {
+      Controls.__super__.constructor.apply(this, arguments);
+    }
+
+    return Controls;
+
+  })(Backbone.Model);
+
+  Webcaster.Model.Playlist = (function(_super) {
+
+    __extends(Playlist, _super);
+
+    function Playlist() {
+      Playlist.__super__.constructor.apply(this, arguments);
+    }
+
+    Playlist.prototype.initialize = function(attributes, options) {
+      this.node = options.node;
+      this.controls = options.controls;
+      this.gain = this.node.context.createGain();
+      this.gain.connect(this.node.webcast);
+      this.listenTo(this.controls, "change:slider", this.setGain);
+      return this.setGain();
+    };
+
+    Playlist.prototype.setGain = function(slider) {
+      slider = parseFloat(this.controls.get("slider"));
+      if (this.get("position") === "left") {
+        return this.gain.gain.value = 1.0 - slider / 100.0;
+      } else {
+        return this.gain.gain.value = slider / 100.0;
+      }
+    };
+
+    Playlist.prototype.appendFiles = function(newFiles, cb) {
       var addFile, files, i, onDone, _ref, _results,
         _this = this;
       files = this.get("files");
@@ -73,27 +199,15 @@
       return _results;
     };
 
-    return Model;
-
-  })(Backbone.Model);
-
-  Webcaster.Player = (function() {
-
-    _.extend(Player.prototype, Backbone.Events);
-
-    function Player(_arg) {
-      this.model = _arg.model;
-    }
-
-    Player.prototype.selectFile = function(options) {
+    Playlist.prototype.selectFile = function(options) {
       var file, files, index;
       if (options == null) options = {};
-      files = this.model.get("files");
-      index = this.model.get("fileIndex");
+      files = this.get("files");
+      index = this.get("fileIndex");
       if (files.length === 0) return;
       index += options.backward ? -1 : 1;
       if (index < 0 || index >= files.length) {
-        if (!this.model.get("loop")) return;
+        if (!this.get("loop")) return;
         if (index < 0) {
           index = files.length - 1;
         } else {
@@ -101,351 +215,113 @@
         }
       }
       file = files[index];
-      this.model.set({
+      this.set({
         fileIndex: index
       });
       return file;
     };
 
-    Player.prototype.getSource = function() {
+    Playlist.prototype.play = function(file, cb) {
       var _this = this;
-      if (this.source != null) return this.source;
-      if (this.model.get("mad")) {
-        this.source = new Webcaster.Source.Mad({
-          model: this.model
-        });
-      } else {
-        this.source = new Webcaster.Source.AudioElement({
-          model: this.model
-        });
-      }
-      this.listenTo(this.source, "ended", function() {
-        return _this.trigger("ended");
-      });
-      this.source.connect();
-      return this.source;
-    };
-
-    Player.prototype.play = function(file, cb) {
-      var _this = this;
-      return this.getSource().prepare(file, function() {
-        _this.getSource().play(file);
-        _this.playing = true;
-        return typeof cb === "function" ? cb() : void 0;
-      });
-    };
-
-    Player.prototype.stop = function(cb) {
-      var source;
-      this.model.set({
-        fileIndex: -1
-      });
-      source = this.getSource();
-      this.source = null;
-      this.playing = false;
-      if (source == null) return cb();
-      this.stopListening(source);
-      return source.close(cb);
-    };
-
-    Player.prototype.sendMetadata = function(data) {
-      var _ref;
-      return (_ref = this.source) != null ? _ref.sendMetadata(data) : void 0;
-    };
-
-    return Player;
-
-  })();
-
-  Webcaster.Source = (function() {
-
-    _.extend(Source.prototype, Backbone.Events);
-
-    function Source(_arg) {
-      var encoder;
-      this.model = _arg.model;
-      if (typeof webkitAudioContext !== "undefined") {
-        this.context = new webkitAudioContext;
-      } else {
-        this.context = new AudioContext;
-      }
-      switch (this.model.get("encoder")) {
-        case "mp3":
-          encoder = Webcast.Encoder.Mp3;
-          break;
-        case "raw":
-          encoder = Webcast.Encoder.Raw;
-      }
-      this.encoder = new encoder({
-        channels: this.model.get("channels"),
-        samplerate: this.model.get("samplerate"),
-        bitrate: this.model.get("bitrate")
-      });
-      if (this.model.get("samplerate") !== this.context.sampleRate) {
-        this.encoder = new Webcast.Encoder.Resample({
-          encoder: this.encoder,
-          type: Samplerate.LINEAR,
-          samplerate: this.context.sampleRate
-        });
-      }
-      if (this.model.get("asynchronous")) {
-        this.encoder = new Webcast.Encoder.Asynchronous({
-          encoder: this.encoder,
-          scripts: ["https://rawgithub.com/webcast/libsamplerate.js/master/dist/libsamplerate.js", "https://rawgithub.com/savonet/shine/master/js/dist/libshine.js", "https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"]
-        });
-      }
-    }
-
-    Source.prototype.connect = function() {
-      this.webcast = new Webcast.Node({
-        url: this.model.get("uri"),
-        encoder: this.encoder,
-        context: this.context,
-        options: {
-          passThrough: this.model.get("passThrough")
-        }
-      });
-      return this.webcast.connect(this.context.destination);
-    };
-
-    Source.prototype.prepare = function() {
-      var _ref;
-      if ((_ref = this.source) != null) _ref.disconnect();
-      return this.model.set({
-        position: 0.0
-      });
-    };
-
-    Source.prototype.play = function(_arg) {
-      var metadata;
-      metadata = _arg.metadata;
-      this.source.connect(this.webcast);
-      return this.sendMetadata(metadata);
-    };
-
-    Source.prototype.stop = function() {
-      var _ref;
-      if ((_ref = this.source) != null) _ref.disconnect();
-      return this.source = null;
-    };
-
-    Source.prototype.sendMetadata = function(data) {
-      var _ref;
-      return (_ref = this.webcast) != null ? _ref.sendMetadata(data) : void 0;
-    };
-
-    Source.prototype.close = function() {
-      var _ref;
       this.stop();
-      if ((_ref = this.webcast) != null) _ref.close();
-      return this.webcast = null;
-    };
-
-    return Source;
-
-  })();
-
-  Webcaster.Source.AudioElement = (function(_super) {
-
-    __extends(AudioElement, _super);
-
-    function AudioElement() {
-      AudioElement.__super__.constructor.apply(this, arguments);
-    }
-
-    AudioElement.prototype.prepare = function(_arg, cb) {
-      var file, _ref, _ref2,
-        _this = this;
-      file = _arg.file;
-      AudioElement.__super__.prepare.apply(this, arguments);
-      if ((_ref = this.audio) != null) _ref.pause();
-      if ((_ref2 = this.audio) != null) _ref2.remove();
-      this.audio = new Audio(URL.createObjectURL(file));
-      this.audio.controls = false;
-      this.audio.autoplay = false;
-      this.audio.loop = false;
-      this.audio.addEventListener("ended", function() {
-        return _this.trigger("ended");
-      });
-      return this.audio.addEventListener("canplay", function() {
-        _this.source = _this.context.createMediaElementSource(_this.audio);
+      return this.node.createSource(file, this.get("mad"), function(source) {
+        _this.source = source;
+        source.connect(_this.gain);
+        source.play(file);
         return cb();
       });
     };
 
-    AudioElement.prototype.play = function() {
-      AudioElement.__super__.play.apply(this, arguments);
-      return this.audio.play();
-    };
-
-    AudioElement.prototype.stop = function() {
+    Playlist.prototype.stop = function() {
       var _ref, _ref2;
-      AudioElement.__super__.stop.apply(this, arguments);
-      if ((_ref = this.audio) != null) _ref.pause();
-      return (_ref2 = this.audio) != null ? _ref2.remove() : void 0;
+      if ((_ref = this.source) != null) _ref.stop();
+      return (_ref2 = this.source) != null ? _ref2.disconnect() : void 0;
     };
 
-    AudioElement.prototype.close = function() {
-      AudioElement.__super__.close.apply(this, arguments);
-      return this.audio = null;
+    Playlist.prototype.sendMetadata = function(file) {
+      return this.node.sendMetadata(file.metadata);
     };
 
-    return AudioElement;
+    return Playlist;
 
-  })(Webcaster.Source);
+  })(Backbone.Model);
 
-  Webcaster.Source.Mad = (function(_super) {
+  Webcaster.Model.Settings = (function(_super) {
 
-    __extends(Mad, _super);
+    __extends(Settings, _super);
 
-    function Mad() {
-      this.processBuffer = __bind(this.processBuffer, this);
-      this.processFrame = __bind(this.processFrame, this);
-      Mad.__super__.constructor.apply(this, arguments);
+    function Settings() {
+      Settings.__super__.constructor.apply(this, arguments);
     }
 
-    Mad.prototype.bufferSize = 4096;
+    return Settings;
 
-    Mad.prototype.resampler = Samplerate.FASTEST;
+  })(Backbone.Model);
 
-    Mad.prototype.initialize = function() {
-      var i, _ref, _results;
-      this.stop();
-      this.remaining = new Array(this.encoder.channels);
-      this.resamplers = new Array(this.encoder.channels);
-      this.pending = new Array(this.encoder.channels);
-      _results = [];
-      for (i = 0, _ref = this.encoder.channels - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
-        this.remaining[i] = new Float32Array;
-        this.pending[i] = new Float32Array;
-        _results.push(this.resamplers[i] = new Samplerate({
-          type: this.resampler
-        }));
-      }
-      return _results;
-    };
+  Webcaster.View.Controls = (function(_super) {
 
-    Mad.prototype.concat = function(a, b) {
-      var ret;
-      if (typeof b === "undefined") return a;
-      ret = new Float32Array(a.length + b.length);
-      ret.set(a);
-      ret.subarray(a.length).set(b);
-      return ret;
-    };
+    __extends(Controls, _super);
 
-    Mad.prototype.prepare = function(_arg, cb) {
-      var file,
-        _this = this;
-      file = _arg.file;
-      Mad.__super__.prepare.apply(this, arguments);
-      this.initialize();
-      this.oscillator = this.context.createOscillator();
-      this.source = this.context.createScriptProcessor(this.bufferSize, this.encoder.channels, this.encoder.channels);
-      this.source.onaudioprocess = this.processBuffer;
-      this.oscillator.connect(this.source);
-      return file.createMadDecoder(function(decoder) {
-        _this.decoder = decoder;
-        return _this.decoder.decodeFrame(function(data, err) {
-          if (err != null) return;
-          _this.format = _this.decoder.getCurrentFormat();
-          _this.bufferDuration = parseFloat(_this.bufferSize) / parseFloat(_this.context.sampleRate);
-          _this.processFrame(data, err);
-          return cb();
-        });
-      });
-    };
+    function Controls() {
+      Controls.__super__.constructor.apply(this, arguments);
+    }
 
-    Mad.prototype.processFrame = function(buffer, err) {
-      var data, i, pendingDuration, used, _ref, _ref2;
-      if (err != null) {
-        this.encoderDone = true;
-        return;
-      }
-      buffer = buffer.slice(0, this.model.get("channels"));
-      for (i = 0, _ref = buffer.length - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
-        if (this.format.sampleRate !== this.context.sampleRate) {
-          buffer[i] = this.concat(this.remaining[i], buffer[i]);
-          _ref2 = this.resamplers[i].process({
-            data: buffer[i],
-            ratio: parseFloat(this.context.sampleRate) / parseFloat(this.format.sampleRate)
-          }), data = _ref2.data, used = _ref2.used;
-          this.remaining[i] = buffer[i].subarray(used);
-          buffer[i] = data;
+    Controls.prototype.render = function() {
+      var _this = this;
+      this.$(".slider").slider({
+        slide: function(e, ui) {
+          return _this.model.set({
+            slider: ui.value
+          });
         }
-        this.pending[i] = this.concat(this.pending[i], buffer[i]);
-      }
-      pendingDuration = parseFloat(this.pending[0].length) / parseFloat(this.context.sampleRate);
-      if (pendingDuration >= this.bufferDuration) return;
-      return this.decoder.decodeFrame(this.processFrame);
+      });
+      return this;
     };
 
-    Mad.prototype.processBuffer = function(buf) {
-      var channelData, i, samples, _ref, _results;
-      this.decoder.decodeFrame(this.processFrame);
-      if (this.encoderDone && this.pending[0].length === 0) {
-        this.trigger("ended");
-        return this.stop();
-      }
-      _results = [];
-      for (i = 0, _ref = this.encoder.channels - 1; 0 <= _ref ? i <= _ref : i >= _ref; 0 <= _ref ? i++ : i--) {
-        channelData = buf.outputBuffer.getChannelData(i);
-        samples = Math.min(this.pending[i].length, channelData.length);
-        channelData.set(this.pending[i].subarray(0, samples));
-        _results.push(this.pending[i] = this.pending[i].subarray(samples, this.pending[i].length));
-      }
-      return _results;
-    };
+    return Controls;
 
-    Mad.prototype.play = function() {
-      Mad.__super__.play.apply(this, arguments);
-      return this.oscillator.start(0);
-    };
+  })(Backbone.View);
 
-    Mad.prototype.stop = function() {
-      var _ref;
-      if ((_ref = this.oscillator) != null) _ref.stop(0);
-      return this.oscillator = this.encoderDone = null;
-    };
+  Webcaster.View.Playlist = (function(_super) {
 
-    return Mad;
+    __extends(Playlist, _super);
 
-  })(Webcaster.Source);
-
-  Webcaster.View.Client = (function(_super) {
-
-    __extends(Client, _super);
-
-    function Client() {
-      Client.__super__.constructor.apply(this, arguments);
+    function Playlist() {
+      Playlist.__super__.constructor.apply(this, arguments);
     }
 
-    Client.prototype.events = {
-      "click #record-audio": "onRecord",
-      "click #play-audio": "onPlay",
-      "click #previous": "onPrevious",
-      "click #next": "onNext",
-      "click #stop": "onStop",
-      "change #files": "onFiles",
+    Playlist.prototype.events = {
+      "click .record-audio": "onRecord",
+      "click .play-audio": "onPlay",
+      "click .previous": "onPrevious",
+      "click .next": "onNext",
+      "click .stop": "onStop",
+      "click .metadata": "onMetadata",
+      "change .files": "onFiles",
+      "change .passThrough": "onPassThrough",
+      "change .loop": "onLoop",
       "submit": "onSubmit"
     };
 
-    Client.prototype.initialize = function(options) {
+    Playlist.prototype.initialize = function() {
       var _this = this;
-      if (options == null) options = {};
-      this.player = options.player;
-      this.listenTo(this.player, "ended", function() {
+      this.listenTo(Webcaster.node, "ended", function() {
         this.$(".track-row").removeClass("success");
         if (!this.model.get("loop")) return;
         return this.play();
       });
-      return this.model.on("change:fileIndex", function() {
+      this.model.on("change:fileIndex", function() {
         _this.$(".track-row").removeClass("success");
         return _this.$(".track-row-" + (_this.model.get("fileIndex"))).addClass("success");
       });
+      if ((new Audio).canPlayType("audio/mpeg") === "") {
+        return this.model.set({
+          mad: true
+        });
+      }
     };
 
-    Client.prototype.render = function() {
+    Playlist.prototype.render = function() {
       var files,
         _this = this;
       files = this.model.get("files");
@@ -470,101 +346,81 @@
       return this;
     };
 
-    Client.prototype.onRecord = function() {};
+    Playlist.prototype.onRecord = function() {};
 
-    Client.prototype.play = function(options) {
+    Playlist.prototype.play = function(options) {
       var _this = this;
+      this.file = this.model.selectFile(options);
       this.$(".play-control").attr({
         disabled: "disabled"
       });
-      return this.player.play(this.player.selectFile(options), function() {
+      return this.model.play(this.file, function() {
         return _this.$(".play-control").removeAttr("disabled");
       });
     };
 
-    Client.prototype.onPlay = function(e) {
+    Playlist.prototype.onPlay = function(e) {
       e.preventDefault();
       return this.play();
     };
 
-    Client.prototype.onPrevious = function(e) {
+    Playlist.prototype.onPrevious = function(e) {
       e.preventDefault();
-      if (!this.player.playing) return;
+      if (this.file == null) return;
       return this.play({
         backward: true
       });
     };
 
-    Client.prototype.onNext = function(e) {
+    Playlist.prototype.onNext = function(e) {
       e.preventDefault();
-      if (!this.player.playing) return;
+      if (this.file == null) return;
       return this.play();
     };
 
-    Client.prototype.onStop = function(e) {
-      var _this = this;
+    Playlist.prototype.onStop = function(e) {
       e.preventDefault();
       this.$(".track-row").removeClass("success");
-      this.$(".play-control").attr({
-        disabled: "disabled"
-      });
-      return this.player.stop(function() {
-        return _this.$(".play-control").removeAttr("disabled");
-      });
+      this.model.stop();
+      return this.file = null;
     };
 
-    Client.prototype.onFiles = function() {
+    Playlist.prototype.onMetadata = function(e) {
+      e.preventDefault();
+      if (this.file == null) return;
+      return this.model.sendMetadata(this.file);
+    };
+
+    Playlist.prototype.onFiles = function() {
       var files,
         _this = this;
-      files = this.$("#files")[0].files;
-      this.$("#files").attr({
+      files = this.$(".files")[0].files;
+      this.$(".files").attr({
         disabled: "disabled"
       });
       return this.model.appendFiles(files, function() {
-        _this.$("#files").removeAttr("disabled").val("");
+        _this.$(".files").removeAttr("disabled").val("");
         return _this.render();
       });
     };
 
-    Client.prototype.onSubmit = function(e) {
-      return e.preventDefault();
-    };
-
-    return Client;
-
-  })(Backbone.View);
-
-  Webcaster.View.Metadata = (function(_super) {
-
-    __extends(Metadata, _super);
-
-    function Metadata() {
-      Metadata.__super__.constructor.apply(this, arguments);
-    }
-
-    Metadata.prototype.events = {
-      "click #send-metadata": "onMetadata",
-      "submit": "onSubmit"
-    };
-
-    Metadata.prototype.initialize = function(options) {
-      if (options == null) options = {};
-      return this.player = options.player;
-    };
-
-    Metadata.prototype.onMetadata = function(e) {
-      e.preventDefault();
-      return this.player.sendMetadata({
-        title: this.$("#title").val(),
-        artist: this.$("#artist").val()
+    Playlist.prototype.onPassThrough = function(e) {
+      return this.model.set({
+        passThrough: $(e.target).is(":checked")
       });
     };
 
-    Metadata.prototype.onSubmit = function(e) {
+    Playlist.prototype.onLoop = function(e) {
+      return this.model.set({
+        loop: $(e.target).is(":checked")
+      });
+    };
+
+    Playlist.prototype.onSubmit = function(e) {
       return e.preventDefault();
     };
 
-    return Metadata;
+    return Playlist;
 
   })(Backbone.View);
 
@@ -577,44 +433,44 @@
     }
 
     Settings.prototype.events = {
-      "change #uri": "onUri",
+      "change .uri": "onUri",
       "change input.encoder": "onEncoder",
       "change input.channels": "onChannels",
-      "change #mono": "onMono",
-      "change #asynchronous": "onAsynchronous",
-      "change #passThrough": "onPassThrough",
-      "change #loop": "onLoop",
+      "change .mono": "onMono",
+      "change .asynchronous": "onAsynchronous",
+      "change .passThrough": "onPassThrough",
+      "click .start-stream": "onStart",
+      "click .stop-stream": "onStop",
       "submit": "onSubmit"
+    };
+
+    Settings.prototype.initialize = function(_arg) {
+      this.node = _arg.node;
     };
 
     Settings.prototype.render = function() {
       var bitrate, samplerate,
         _this = this;
       samplerate = this.model.get("samplerate");
-      this.$("#samplerate").empty();
+      this.$(".samplerate").empty();
       _.each(this.model.get("samplerates"), function(rate) {
         var selected;
         selected = samplerate === rate ? "selected" : "";
-        return $("<option value='" + rate + "' " + selected + ">" + rate + "</option>").appendTo(_this.$("#samplerate"));
+        return $("<option value='" + rate + "' " + selected + ">" + rate + "</option>").appendTo(_this.$(".samplerate"));
       });
       bitrate = this.model.get("bitrate");
-      this.$("#bitrate").empty();
+      this.$(".bitrate").empty();
       _.each(this.model.get("bitrates"), function(rate) {
         var selected;
         selected = bitrate === rate ? "selected" : "";
-        return $("<option value='" + rate + "' " + selected + ">" + rate + "</option>").appendTo(_this.$("#bitrate"));
+        return $("<option value='" + rate + "' " + selected + ">" + rate + "</option>").appendTo(_this.$(".bitrate"));
       });
-      if ((new Audio).canPlayType("audio/mpeg") === "") {
-        this.model.set({
-          mad: true
-        });
-      }
       return this;
     };
 
     Settings.prototype.onUri = function() {
       return this.model.set({
-        uri: this.$("#uri").val()
+        uri: this.$(".uri").val()
       });
     };
 
@@ -642,10 +498,22 @@
       });
     };
 
-    Settings.prototype.onLoop = function(e) {
-      return this.model.set({
-        loop: $(e.target).is(":checked")
+    Settings.prototype.onStart = function(e) {
+      e.preventDefault();
+      this.$(".stop-stream").show();
+      this.$(".start-stream").hide();
+      this.$("input").attr({
+        disabled: "disabled"
       });
+      return this.node.startStream();
+    };
+
+    Settings.prototype.onStop = function(e) {
+      e.preventDefault();
+      this.$(".stop-stream").hide();
+      this.$(".start-stream").show();
+      this.$("input").removeAttr("disabled");
+      return this.node.stopStream();
     };
 
     Settings.prototype.onSubmit = function(e) {
@@ -657,30 +525,64 @@
   })(Backbone.View);
 
   $(function() {
-    Webcaster.model = new Webcaster.Model;
-    Webcaster.player = new Webcaster.Player({
-      model: Webcaster.model
+    Webcaster.settings = new Webcaster.Model.Settings({
+      uri: "ws://localhost:8080/mount",
+      bitrate: 128,
+      bitrates: [8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320],
+      samplerate: 44100,
+      samplerates: [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000],
+      channels: 2,
+      encoder: "mp3",
+      asynchronous: false,
+      passThrough: false,
+      mad: false
+    });
+    Webcaster.controls = new Webcaster.Model.Controls({
+      slider: 0
+    });
+    Webcaster.node = new Webcaster.Node({
+      model: Webcaster.settings
     });
     _.extend(Webcaster, {
-      model: Webcaster.model,
-      settings: new Webcaster.View.Settings({
-        model: Webcaster.model,
-        el: $("div.settings")
-      }),
-      client: new Webcaster.View.Client({
-        model: Webcaster.model,
-        player: Webcaster.player,
-        el: $("div.client")
-      }),
-      metadata: new Webcaster.View.Metadata({
-        model: Webcaster.model,
-        player: Webcaster.player,
-        el: $("div.metadata")
-      })
+      views: {
+        settings: new Webcaster.View.Settings({
+          model: Webcaster.settings,
+          node: Webcaster.node,
+          el: $("div.settings")
+        }),
+        controls: new Webcaster.View.Controls({
+          model: Webcaster.controls,
+          el: $("div.controls")
+        }),
+        playlistLeft: new Webcaster.View.Playlist({
+          model: new Webcaster.Model.Playlist({
+            position: "left",
+            files: [],
+            fileIndex: -1,
+            passThrough: false,
+            loop: true
+          }, {
+            controls: Webcaster.controls,
+            node: Webcaster.node
+          }),
+          el: $("div.playlist-left")
+        }),
+        playlistRight: new Webcaster.View.Playlist({
+          model: new Webcaster.Model.Playlist({
+            position: "right",
+            files: [],
+            fileIndex: -1,
+            passThrough: false,
+            loop: true
+          }, {
+            controls: Webcaster.controls,
+            node: Webcaster.node
+          }),
+          el: $("div.playlist-right")
+        })
+      }
     });
-    Webcaster.settings.render();
-    Webcaster.client.render();
-    return Webcaster.metadata.render();
+    return _.invoke(Webcaster.views, "render");
   });
 
 }).call(this);

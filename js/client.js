@@ -436,6 +436,8 @@
       "change .uri": "onUri",
       "change input.encoder": "onEncoder",
       "change input.channels": "onChannels",
+      "change .samplerate": "onSamplerate",
+      "change .bitrate": "onBitrate",
       "change .mono": "onMono",
       "change .asynchronous": "onAsynchronous",
       "change .passThrough": "onPassThrough",
@@ -483,6 +485,18 @@
     Settings.prototype.onChannels = function(e) {
       return this.model.set({
         channels: parseInt($(e.target).val())
+      });
+    };
+
+    Settings.prototype.onSamplerate = function(e) {
+      return this.model.set({
+        samplerate: parseInt($(e.target).val())
+      });
+    };
+
+    Settings.prototype.onBitrate = function(e) {
+      return this.model.set({
+        bitrate: parseInt($(e.target).val())
       });
     };
 

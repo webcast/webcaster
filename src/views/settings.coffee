@@ -3,6 +3,8 @@ class Webcaster.View.Settings extends Backbone.View
     "change .uri"           : "onUri"
     "change input.encoder"  : "onEncoder"
     "change input.channels" : "onChannels"
+    "change .samplerate"    : "onSamplerate"
+    "change .bitrate"       : "onBitrate"
     "change .mono"          : "onMono"
     "change .asynchronous"  : "onAsynchronous"
     "change .passThrough"   : "onPassThrough"
@@ -37,6 +39,12 @@ class Webcaster.View.Settings extends Backbone.View
 
   onChannels: (e) ->
     @model.set channels: parseInt($(e.target).val())
+
+  onSamplerate: (e) ->
+    @model.set samplerate: parseInt($(e.target).val())
+
+  onBitrate: (e) ->
+    @model.set bitrate: parseInt($(e.target).val())
 
   onAsynchronous: (e) ->
     @model.set asynchronous: $(e.target).is(":checked")

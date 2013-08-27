@@ -6,6 +6,7 @@
     <title>Webcaster Client</title>
     <link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.2/css/bootstrap.min.css" rel="stylesheet" media="screen">
     <link href="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.3/css/base/jquery.ui.all.min.css" rel="stylesheet" media="screen">
+    <link href="css/client.css" rel="stylesheet" media="screen">
 
     <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.10.0/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
@@ -34,6 +35,7 @@
                   <div class="controls">
                     <button class="btn btn-primary start-stream">Start streaming</button>
                     <button class="btn btn-danger stop-stream" style="display: none;">Stop streaming</button>
+                    <button class="btn btn-info passThrough">CUE</button>
                   </div>
                 </div>
                 <div class="control-group">
@@ -75,12 +77,7 @@
                 <div class="control-group">
                   <div class="controls">
                     <label class="checkbox">
-                      <input type="checkbox" class="passThrough"> Play stream locally
-                    </label>
-                  </div>
-                  <div class="controls">
-                    <label class="checkbox">
-                      <input type="checkbox" class="asynchronous"> Use asynchronous worker
+                      <input type="checkbox" class="asynchronous" checked> Use asynchronous worker
                     </label>
                   </div>
                 </div>
@@ -93,25 +90,33 @@
             <h1>Webcaster Client</h1>
           </div>
         </div>
-        <div class="span3 playlist-left">
+        <div class="span3 playlist-left well">
+          <div class="volume-slider"></div>
+          <h3 class="playlist-label">Playlist 1</h3>
           <form>
             <fieldset>
               <div class="control-group" align="center">
                 <div class="controls">
                   <button class="btn btn-success play-audio player-control"><i class="icon-play"></i></button>
+                  <button class="btn btn-warning pause-audio player-control" style="display: none;"><i class="icon-pause"></i></button>
                   <button class="btn previous player-control"><i class="icon-fast-backward"></i></button>
                   <button class="btn next player-control"><i class="icon-fast-forward"></i></button>
                   <button class="btn btn-danger stop player-control"><i class="icon-stop"></i></button>
-                  <button class="btn btn-info metadata player-control"><i class="icon-tags"></i></button>
+                  <button class="btn btn-info passThrough">CUE</button>
                 </div>
               </div>
             </fieldset>
           </form>
-          <div class="progress" style="height: 10px; margin-bottom: 2px;">
-            <div class="bar volume-left" style="height: 10px; width: 0%"></div>
+          <div class="progress progress-success progress-volume">
+            <div class="progress-seek"></div>
+            <span class="track-position-text"></span>
+            <div class="bar track-position" style="width: 0%"></div>
           </div>
-          <div class="progress" style="height: 10px; margin-bottom: 10px;">
-            <div class="bar volume-right" style="height: 10px; width: 0%"></div>
+          <div class="progress progress-left">
+            <div class="bar volume-left volume-bar" style="width: 0%"></div>
+          </div>
+          <div class="progress progress-right">
+            <div class="bar volume-right" style="width: 0%"></div>
           </div>
           <div class="playlist">
             <div class="playlist-table" style="display: none;">
@@ -129,11 +134,6 @@
               <div class="control-group">
                 <div class="controls">
                   <label class="checkbox">
-                    <input type="checkbox" class="passThrough"> Play stream locally
-                  </label>
-                 </div>
-                <div class="controls">
-                  <label class="checkbox">
                     <input type="checkbox" class="loop" checked="checked"> Repeat playlist
                   </label>
                 </div>
@@ -141,28 +141,59 @@
             </fieldset>
           </form>
         </div>
-        <div class="span2 controls">
-          <div class="slider"></div>
+        <div class="span3">
+          <div class="mixer well">
+            <h2 class="mixer-label">Mixer</h2>
+            <div class="slider"></div>
+          </div>
+          <div class="microphone well">
+            <div class="microphone-slider"></div>
+            <h3 class="microphone-label">Microphone</h3>
+            <form>
+              <fieldset>
+                <div class="control-group" align="center">
+                  <div class="controls">
+                    <button class="btn btn-danger record-audio player-control"><i class="icon-facetime-video"></i></button>
+                    <button class="btn btn-info passThrough">CUE</button>
+                  </div>
+                </div>
+              </fieldset>
+            </form>
+            <div class="progress progress-left">
+              <div class="bar volume-left" style="width: 0%"></div>
+            </div>
+            <div class="progress progress-right">
+              <div class="bar volume-right" style="width: 0%"></div>
+            </div>
+          </div>
         </div>
-        <div class="span3 playlist-right">
+        <div class="span3 playlist-right well">
+          <div class="volume-slider"></div>
+          <h3 class="playlist-label">Playlist 2</h3>
           <form>
             <fieldset>
               <div class="control-group" align="center">
                 <div class="controls">
                   <button class="btn btn-success play-audio player-control"><i class="icon-play"></i></button>
+                  <button class="btn btn-warning pause-audio player-control" style="display: none;"><i class="icon-pause"></i></button>
                   <button class="btn previous player-control"><i class="icon-fast-backward"></i></button>
                   <button class="btn next player-control"><i class="icon-fast-forward"></i></button>
                   <button class="btn btn-danger stop player-control"><i class="icon-stop"></i></button>
-                  <button class="btn btn-info metadata player-control"><i class="icon-tags"></i></button>
+                  <button class="btn btn-info passThrough">CUE</button>
                 </div>
               </div>
             </fieldset>
           </form>
-          <div class="progress" style="height: 10px; margin-bottom: 2px;">
-            <div class="bar volume-left" style="height: 10px; width: 0%"></div>
+          <div class="progress progress-success progress-volume">
+            <div class="progress-seek"></div>
+            <span class="track-position-text"></span>
+            <div class="bar track-position" style="width: 0%"></div>
           </div>
-          <div class="progress" style="height: 10px; margin-bottom: 10px;">
-            <div class="bar volume-right" style="height: 10px; width: 0%"></div>
+          <div class="progress progress-left">
+            <div class="bar volume-left" style="width: 0%"></div>
+          </div>
+          <div class="progress progress-right">
+            <div class="bar volume-right" style="width: 0%"></div>
           </div>
           <div class="playlist">
             <div class="playlist-table" style="display: none;">
@@ -178,11 +209,6 @@
           <form>
             <fieldset>
               <div class="control-group">
-                <div class="controls">
-                  <label class="checkbox">
-                    <input type="checkbox" class="passThrough"> Play stream locally
-                  </label>
-                 </div>
                 <div class="controls">
                   <label class="checkbox">
                     <input type="checkbox" class="loop" checked="checked"> Repeat playlist

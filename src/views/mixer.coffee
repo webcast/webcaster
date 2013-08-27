@@ -1,4 +1,4 @@
-class Webcaster.View.Controls extends Backbone.View
+class Webcaster.View.Mixer extends Backbone.View
   render: ->
     @$(".slider").slider
       slide: (e, ui) =>

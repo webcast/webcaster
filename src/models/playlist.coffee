@@ -1,70 +1,21 @@
-createVolumeMeter = (context, model) ->
-  bufferSize = 4096
+class Webcaster.Model.Playlist extends Webcaster.Model.Track
+  initialize: ->
+    super
 
-  bufferLog = Math.log parseFloat(bufferSize)
-  log10     = 2.0 * Math.log(10)
+    @mixer.on "change:slider", @setMixGain
 
-  source = context.createScriptProcessor bufferSize, 2, 2
+    @mixGain = @node.context.createGain()
+    @mixGain.connect @node.webcast
 
-  source.onaudioprocess = (buf) ->
-    for channel in [0..buf.inputBuffer.numberOfChannels-1]
-      channelData = buf.inputBuffer.getChannelData channel
+    @sink = @mixGain
 
-      if channel == 0
-        label = "volumeLeft"
-      else
-        label = "volumeRight"
+  setMixGain: =>
+    return unless @mixGain?
 
-      rms = 0.0
-      for i in [0..channelData.length-1]
-        rms += Math.pow channelData[i], 2
-
-      model.set label, 100*Math.exp((Math.log(rms)-bufferLog)/log10)
-
-      buf.outputBuffer.getChannelData(channel).set channelData
-
-  source
-
-createPassThrough = (context, model) ->
-  source = context.createScriptProcessor 8192, 2, 2
-
-  source.onaudioprocess = (buf) ->
-    channelData = buf.inputBuffer.getChannelData channel
-
-    for channel in [0..buf.inputBuffer.numberOfChannels-1]
-      if model.get("passThrough")
-        buf.outputBuffer.getChannelData(channel).set channelData
-      else
-        buf.outputBuffer.getChannelData(channel).set (new Float32Array channelData.length)
-
-  source
-
-class Webcaster.Model.Playlist extends Backbone.Model
-  initialize: (attributes, options) ->
-    @node = options.node
-    @controls = options.controls
-
-    @gain = @node.context.createGain()
-    @gain.connect @node.webcast
-
-    @vuMeter = createVolumeMeter @node.context, this
-    @vuMeter.connect @gain
-
-    @destination = @vuMeter
-
-    @passThrough = createPassThrough @node.context, this
-    @passThrough.connect @node.context.destination
-    @destination.connect @passThrough
-
-    @listenTo @controls, "change:slider", @setGain
-    @setGain()
-
-  setGain: (slider) ->
-    slider = parseFloat @controls.get("slider")
-    if @get("position") == "left"
-      @gain.gain.value = 1.0 - slider/100.0
+    if @get("side") == "left"
+      @mixGain.gain.value = @mixer.getLeftVolume()
     else
-      @gain.gain.value = slider/100.0
+      @mixGain.gain.value = @mixer.getRightVolume()
 
   appendFiles: (newFiles, cb) ->
     files = @get "files"
@@ -105,18 +56,21 @@ class Webcaster.Model.Playlist extends Backbone.Model
 
     file
 
-  play: (file, cb) ->
-    @stop()
+  play: (file) ->
+    @prepare()
 
-    @node.createSource file, @get("mad"), (@source) =>
+    @setMixGain()
+
+    @node.createFileSource file, this, (@source) =>
       source.connect @destination
 
+      if @source.duration?
+        @set duration: @source.duration()
+
       source.play file
-      cb()
+      @trigger "playing"
 
-  stop: ->
-    @source?.stop()
-    @source?.disconnect()
+  onEnd: ->
+    @stop()
 
-  sendMetadata: (file) ->
-    @node.sendMetadata file.metadata
+    @play @selectFile() if @get("loop")

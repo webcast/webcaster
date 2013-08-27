@@ -7,12 +7,17 @@ class Webcaster.View.Settings extends Backbone.View
     "change .bitrate"       : "onBitrate"
     "change .mono"          : "onMono"
     "change .asynchronous"  : "onAsynchronous"
-    "change .passThrough"   : "onPassThrough"
+    "click .passThrough"    : "onPassThrough"
     "click .start-stream"   : "onStart"
     "click .stop-stream"    : "onStop"
     "submit"                : "onSubmit"
 
   initialize: ({@node}) ->
+    @model.on "change:passThrough", =>
+      if @model.get("passThrough")
+        @$(".passThrough").addClass("btn-cued").removeClass "btn-info"
+      else
+        @$(".passThrough").addClass("btn-info").removeClass "btn-cued"
 
   render: ->
     samplerate = @model.get "samplerate"
@@ -50,16 +55,16 @@ class Webcaster.View.Settings extends Backbone.View
     @model.set asynchronous: $(e.target).is(":checked")
 
   onPassThrough: (e) ->
-    @model.set passThrough: $(e.target).is(":checked")
+    e.preventDefault()
+
+    @model.togglePassThrough()
 
   onStart: (e) ->
     e.preventDefault()
 
     @$(".stop-stream").show()
     @$(".start-stream").hide()
-    @$("input").attr disabled: "disabled"
-    # Except passThrough
-    @$("input.passThrough").removeAttr "disabled"
+    @$("input, select").attr disabled: "disabled"
 
     @node.startStream()
 
@@ -68,7 +73,7 @@ class Webcaster.View.Settings extends Backbone.View
 
     @$(".stop-stream").hide()
     @$(".start-stream").show()
-    @$("input").removeAttr "disabled"
+    @$("input, select").removeAttr "disabled"
 
     @node.stopStream()
 

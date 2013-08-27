@@ -1,17 +1,19 @@
-class Webcaster.View.Playlist extends Backbone.View
+class Webcaster.View.Playlist extends Webcaster.View.Track
   events:
-    "click .record-audio"   : "onRecord"
-    "click .play-audio"     : "onPlay"
-    "click .previous"       : "onPrevious"
-    "click .next"           : "onNext"
-    "click .stop"           : "onStop"
-    "click .metadata"       : "onMetadata"
-    "change .files"         : "onFiles"
-    "change .passThrough"   : "onPassThrough"
-    "change .loop"          : "onLoop"
-    "submit"                : "onSubmit"
+    "click .play-audio"      : "onPlay"
+    "click .pause-audio"     : "onPause"
+    "click .previous"        : "onPrevious"
+    "click .next"            : "onNext"
+    "click .stop"            : "onStop"
+    "click .progress-seek"   : "onSeek"
+    "click .passThrough"     : "onPassThrough"
+    "change .files"          : "onFiles"
+    "change .loop"           : "onLoop"
+    "submit"                 : "onSubmit"
 
   initialize: ->
+    super
+
     # TODO
     @listenTo Webcaster.node, "ended", ->
       @$(".track-row").removeClass "success"
@@ -22,21 +24,63 @@ class Webcaster.View.Playlist extends Backbone.View
       @$(".track-row").removeClass "success"
       @$(".track-row-#{@model.get("fileIndex")}").addClass "success"
 
-    @model.on "change:volumeLeft", =>
-      @$(".volume-left").width "#{@model.get("volumeLeft")}%"
+    @model.on "playing", =>
+      @$(".play-control").removeAttr "disabled"
+      @$(".play-audio").hide()
+      @$(".pause-audio").show()
+      @$(".track-position-text").removeClass("blink").text ""
+      @$(".volume-left").width "0%"
+      @$(".volume-right").width "0%"
 
-    @model.on "change:volumeRight", =>
-      @$(".volume-right").width "#{@model.get("volumeRight")}%"
+      if @model.get("duration")
+        @$(".progress-volume").css "cursor", "pointer"
+      else
+        @$(".track-position").addClass("progress-striped active").width "100%"
+
+    @model.on "paused", =>
+      @$(".play-audio").show()
+      @$(".pause-audio").hide()
+      @$(".volume-left").width "0%"
+      @$(".volume-right").width "0%"
+      @$(".track-position-text").addClass "blink"
+
+    @model.on "stopped", =>
+      @$(".play-audio").show()
+      @$(".pause-audio").hide()
+      @$(".progress-volume").css "cursor", ""
+      @$(".track-position").removeClass("progress-striped active").width "0%"
+      @$(".track-position-text").removeClass("blink").text ""
+      @$(".volume-left").width "0%"
+      @$(".volume-right").width "0%"
+
+    @model.on "change:position", =>
+      return unless duration = @model.get("duration")
+
+      position = parseFloat @model.get("position")
+
+      @$(".track-position").
+        width "#{100.0*position/parseFloat(duration)}%"
+
+      @$(".track-position-text").
+        text "#{Webcaster.prettifyTime(position)} / #{Webcaster.prettifyTime(duration)}"
 
     if (new Audio).canPlayType("audio/mpeg") == ""
       @model.set mad: true
 
   render: ->
+    @$(".volume-slider").slider
+      orientation: "vertical"
+      min: 0
+      max: 150
+      value: 100
+      slide: (e, ui) =>
+        @model.set trackGain: ui.value
+
     files = @model.get "files"
 
     @$(".files-table").empty()
 
-    return unless files.length > 0
+    return this unless files.length > 0
 
     _.each files, ({file, audio, metadata}, index) =>
       if audio?.length != 0
@@ -62,18 +106,23 @@ class Webcaster.View.Playlist extends Backbone.View
 
     this
 
-  onRecord: ->
-
   play: (options) ->
-    @file = @model.selectFile options
+    if @model.isPlaying()
+      @model.togglePause()
+      return
+
+    return unless @file = @model.selectFile options
 
     @$(".play-control").attr disabled: "disabled"
-    @model.play @file, =>
-      @$(".play-control").removeAttr "disabled"
+    @model.play @file
 
   onPlay: (e) ->
     e.preventDefault()
     @play()
+
+  onPause: (e) ->
+    e.preventDefault()
+    @model.togglePause()
 
   onPrevious: (e) ->
     e.preventDefault()
@@ -94,11 +143,10 @@ class Webcaster.View.Playlist extends Backbone.View
     @model.stop()
     @file = null
 
-  onMetadata: (e) ->
+  onSeek: (e) ->
     e.preventDefault()
-    return unless @file?
 
-    @model.sendMetadata @file
+    @model.seek ((e.pageX - $(e.target).offset().left) / $(e.target).width())
 
   onFiles: ->
     files = @$(".files")[0].files
@@ -108,11 +156,5 @@ class Webcaster.View.Playlist extends Backbone.View
       @$(".files").removeAttr("disabled").val ""
       @render()
 
-  onPassThrough: (e) ->
-    @model.set passThrough: $(e.target).is(":checked")
-
   onLoop: (e) ->
     @model.set loop: $(e.target).is(":checked")
-
-  onSubmit: (e) ->
-    e.preventDefault()

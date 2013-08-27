@@ -1,0 +1,119 @@
+div.volume-slider {
+  position: absolute;
+  height: 165px;
+}
+
+div.progress-seek {
+  position: absolute;
+  display: inline-block;
+  height: 20px;
+  width: 275px !important;
+  z-index: 1000;
+}
+
+div.progress-volume {
+  margin-left: 25px;
+  width: 275px !important;
+}
+
+span.track-position-text {
+  position: absolute;
+  text-align: center;
+  width: 275px; !important;
+}
+
+div.progress-left {
+  height: 10px;
+  width: 275px !important;
+  margin-bottom: 2px;
+  margin-left: 25px;
+}
+
+div.progress-right {
+  height: 10px;
+  width: 275px !important;
+  margin-bottom: 10px;
+  margin-left: 25px;
+}
+
+div.volume-bar {
+  height: 10px;
+}
+
+.playlist-label {
+  margin-bottom: 5px;
+  text-align: center;
+}
+
+@keyframes blink {  
+  0% { opacity: 1.0; }
+  50% { opacity: 0.0; }
+  100% { opacity: 1.0; }
+}
+
+@-webkit-keyframes blink {
+  0% { opacity: 1.0; }
+  50% { opacity: 0.0; }
+  100% { opacity: 1.0; }
+}
+
+.blink {
+    -webkit-animation: blink 1.1s linear infinite;
+    -moz-animation: blink 1.1s linear infinite;
+    animation: blink 1.1s linear infinite;
+} 
+
+@keyframes btn-cued {
+  0% { background: rgb(250,167,50); }
+  50% { background: rgb(238,238,238); }
+  100% { background: rgb(250,167,50); }
+}
+
+@-webkit-keyframes btn-cued {
+  0% { background: rgb(250,167,50); }
+  50% { background: rgb(238,238,238); }
+  100% { background: rgb(250,167,50); }
+}
+
+.btn-cued {
+  color: "black";
+  -webkit-animation: btn-cued 1.1s linear infinite;
+  -moz-animation: btn-cued 1.1s linear infinite;
+  animation: btn-cued 1.1s linear infinite;
+}
+
+div.microphone {
+  margin-top: 25px;
+}
+
+@keyframes btn-recording {
+  0% { background: rgb(218, 79, 73) }
+  50% { background: rgb(238,238,238); }
+  100% { background: rgb(218, 79, 73) }
+}
+
+@-webkit-keyframes btn-recording {
+  0% { background: rgb(218, 79, 73) }
+  50% { background: rgb(238,238,238); }
+  100% { background: rgb(218, 79, 73) }
+}
+
+.btn-recording {
+  -webkit-animation: btn-recording 1.1s linear infinite;
+  -moz-animation: btn-recording 1.1s linear infinite;
+  animation: btn-recording 1.1s linear infinite;
+}
+
+.microphone-label {
+  margin-bottom: 5px;
+  text-align:center;
+}
+
+div.microphone-slider {
+  position: absolute;
+  height: 127px;
+}
+
+.mixer-label {
+  text-align: center;
+}

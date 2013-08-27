@@ -1,5 +1,8 @@
 $ ->
-  Webcaster.settings = new Webcaster.Model.Settings
+  Webcaster.mixer = new Webcaster.Model.Mixer
+    slider: 0
+
+  Webcaster.settings = new Webcaster.Model.Settings({
     uri:          "ws://localhost:8080/mount"
     bitrate:      128
     bitrates:     [ 8, 16, 24, 32, 40, 48, 56,
@@ -10,12 +13,12 @@ $ ->
                     22050, 24000, 32000, 44100, 48000 ]
     channels:     2
     encoder:      "mp3"
-    asynchronous: false
+    asynchronous: true
     passThrough:  false
     mad:          false
-
-  Webcaster.controls = new Webcaster.Model.Controls
-    slider: 0
+  }, {
+    mixer: Webcaster.mixer
+  })
 
   Webcaster.node = new Webcaster.Node
     model: Webcaster.settings
@@ -27,37 +30,50 @@ $ ->
         node  : Webcaster.node
         el    : $("div.settings")
 
-      controls: new Webcaster.View.Controls
-        model : Webcaster.controls
-        el    : $("div.controls")
+      mixer: new Webcaster.View.Mixer
+        model : Webcaster.mixer
+        el    : $("div.mixer")
+
+      microphone: new Webcaster.View.Microphone
+        model: new Webcaster.Model.Microphone({
+          passThrough : false
+        }, {
+          mixer: Webcaster.mixer
+          node:  Webcaster.node
+        })
+        el: $("div.microphone")
 
       playlistLeft : new Webcaster.View.Playlist
         model : new Webcaster.Model.Playlist({
-          position    : "left"
+          side        : "left"
           files       : []
           fileIndex   : -1
           volumeLeft  : 0
           volumeRight : 0
+          trackGain   : 100
           passThrough :false
+          position    : 0.0
           loop        : true
         }, {
-          controls : Webcaster.controls
-          node     : Webcaster.node
+          mixer : Webcaster.mixer
+          node  : Webcaster.node
         })
         el : $("div.playlist-left")
 
       playlistRight : new Webcaster.View.Playlist
         model : new Webcaster.Model.Playlist({
-          position    : "right"
+          side        : "right"
           files       : []
           fileIndex   : -1
           volumeLeft  : 0
           volumeRight : 0
+          trackGain   : 100
           passThrough : false
+          position    : 0.0
           loop        : true
         }, {
-          controls : Webcaster.controls
-          node     : Webcaster.node
+          mixer : Webcaster.mixer
+          node  : Webcaster.node
         })
         el : $("div.playlist-right")
 

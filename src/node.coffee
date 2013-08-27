@@ -1,3 +1,5 @@
+getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia
+
 class Webcaster.Node
   _.extend @prototype, Backbone.Events
 
@@ -45,31 +47,47 @@ class Webcaster.Node
   stopStream: ->
     @webcast.close()
 
-  createAudioSource: (file, cb) ->
-    audio?.pause()
-    audio?.remove()
+  createAudioSource: ({file, audio}, model, cb) ->
+    el = new Audio URL.createObjectURL(file)
+    el.controls = false
+    el.autoplay = false
+    el.loop     = false
 
-    audio = new Audio URL.createObjectURL(file)
-    audio.controls = false
-    audio.autoplay = false
-    audio.loop     = false
+    el.addEventListener "ended", =>
+      model.onEnd()
 
-    audio.addEventListener "ended", =>
-      # TODO @trigger "ended"
-
-    audio.addEventListener "canplay", =>
-      source = @context.createMediaElementSource audio
+    el.addEventListener "canplay", =>
+      source = @context.createMediaElementSource el
 
       source.play = ->
-        audio.play()
+        el.play()
+
+      source.position = ->
+        el.currentTime
+
+      source.duration = ->
+        el.duration
+
+      source.paused = ->
+        el.paused
 
       source.stop = ->
-        audio.pause()
-        audio.remove()
+        el.pause()
+        el.remove()
+
+      source.pause = ->
+        el.pause()
+
+      source.seek = (percent) ->
+        time = percent*parseFloat(audio.length)
+
+        el.currentTime = time
+        time
 
       cb source
 
-  createMadSource: (file, cb) ->
+  createMadSource: (file, model, cb) ->
+    # TODO: "ended" event
     file.createMadDecoder (decoder, format) =>
       source = @context.createMadSource 1024, decoder, format
 
@@ -82,13 +100,17 @@ class Webcaster.Node
 
       cb source
 
-  createSource: ({file}, mad, cb) ->
+  createFileSource: (file, model, cb) ->
     @source?.disconnect()
 
-    if /\.mp3$/i.test(file.name) and mad
-      @createMadSource file, cb
+    if /\.mp3$/i.test(file.name) and model.get("mad")
+      @createMadSource file, model, cb
     else
-      @createAudioSource file, cb
+      @createAudioSource file, model, cb
+
+  createMicrophoneSource: (cb) ->
+    getUserMedia.call navigator, {audio:true, video:false}, (stream) =>
+      cb @context.createMediaStreamSource(stream)
 
   sendMetadata: (data) ->
     @webcast.sendMetadata data

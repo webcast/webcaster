@@ -1,7 +1,10 @@
 createVolumeMeter = (context, model) ->
-  sqrt2 = Math.sqrt 2
+  bufferSize = 4096
 
-  source = context.createScriptProcessor 8192, 2, 2
+  bufferLog = Math.log parseFloat(bufferSize)
+  log10     = 2.0 * Math.log(10)
+
+  source = context.createScriptProcessor bufferSize, 2, 2
 
   source.onaudioprocess = (buf) ->
     for channel in [0..buf.inputBuffer.numberOfChannels-1]
@@ -16,7 +19,7 @@ createVolumeMeter = (context, model) ->
       for i in [0..channelData.length-1]
         rms += Math.pow channelData[i], 2
 
-      model.set label, 100*sqrt2*Math.sqrt(rms/parseFloat(channelData.length))
+      model.set label, 100*Math.exp((Math.log(rms)-bufferLog)/log10)
 
       buf.outputBuffer.getChannelData(channel).set channelData
 

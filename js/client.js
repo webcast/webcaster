@@ -150,9 +150,11 @@
   })(Backbone.Model);
 
   createVolumeMeter = function(context, model) {
-    var source, sqrt2;
-    sqrt2 = Math.sqrt(2);
-    source = context.createScriptProcessor(8192, 2, 2);
+    var bufferLog, bufferSize, log10, source;
+    bufferSize = 4096;
+    bufferLog = Math.log(parseFloat(bufferSize));
+    log10 = 2.0 * Math.log(10);
+    source = context.createScriptProcessor(bufferSize, 2, 2);
     source.onaudioprocess = function(buf) {
       var channel, channelData, i, label, rms, _ref, _ref2, _results;
       _results = [];
@@ -167,7 +169,7 @@
         for (i = 0, _ref2 = channelData.length - 1; 0 <= _ref2 ? i <= _ref2 : i >= _ref2; 0 <= _ref2 ? i++ : i--) {
           rms += Math.pow(channelData[i], 2);
         }
-        model.set(label, 100 * sqrt2 * Math.sqrt(rms / parseFloat(channelData.length)));
+        model.set(label, 100 * Math.exp((Math.log(rms) - bufferLog) / log10));
         _results.push(buf.outputBuffer.getChannelData(channel).set(channelData));
       }
       return _results;

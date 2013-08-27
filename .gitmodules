@@ -1,0 +1,15 @@
+[submodule "vendor/libsamplerate.js"]
+	path = vendor/libsamplerate.js
+	url = https://github.com/webcast/libsamplerate.js.git
+[submodule "vendor/libmad.js"]
+	path = vendor/libmad.js
+	url = https://github.com/webcast/libmad.js.git
+[submodule "vendor/webcast.js"]
+	path = vendor/webcast.js
+	url = https://github.com/webcast/webcast.js.git
+[submodule "vendor/taglib.js"]
+	path = vendor/taglib.js
+	url = https://github.com/webcast/taglib.js.git
+[submodule "vendor/shine"]
+	path = vendor/shine
+	url = https://github.com/savonet/shine.git

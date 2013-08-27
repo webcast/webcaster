@@ -22,6 +22,20 @@ createVolumeMeter = (context, model) ->
 
   source
 
+createPassThrough = (context, model) ->
+  source = context.createScriptProcessor 8192, 2, 2
+
+  source.onaudioprocess = (buf) ->
+    channelData = buf.inputBuffer.getChannelData channel
+
+    for channel in [0..buf.inputBuffer.numberOfChannels-1]
+      if model.get("passThrough")
+        buf.outputBuffer.getChannelData(channel).set channelData
+      else
+        buf.outputBuffer.getChannelData(channel).set (new Float32Array channelData.length)
+
+  source
+
 class Webcaster.Model.Playlist extends Backbone.Model
   initialize: (attributes, options) ->
     @node = options.node
@@ -30,8 +44,14 @@ class Webcaster.Model.Playlist extends Backbone.Model
     @gain = @node.context.createGain()
     @gain.connect @node.webcast
 
-    @vuMetter = createVolumeMeter @node.context, this
-    @vuMetter.connect @gain
+    @vuMeter = createVolumeMeter @node.context, this
+    @vuMeter.connect @gain
+
+    @destination = @vuMeter
+
+    @passThrough = createPassThrough @node.context, this
+    @passThrough.connect @node.context.destination
+    @destination.connect @passThrough
 
     @listenTo @controls, "change:slider", @setGain
     @setGain()
@@ -86,7 +106,8 @@ class Webcaster.Model.Playlist extends Backbone.Model
     @stop()
 
     @node.createSource file, @get("mad"), (@source) =>
-      source.connect @vuMetter
+      source.connect @destination
+
       source.play file
       cb()
 

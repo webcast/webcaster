@@ -7,8 +7,11 @@ class Webcaster.Node
     else
       @context = new AudioContext
 
-    @webcast = @context.createWebcastSource 4096, 2, @model.get("passThrough")
+    @webcast = @context.createWebcastSource 4096, 2
     @webcast.connect @context.destination
+ 
+    @model.on "change:passThrough", =>
+      @webcast.setPassThrough @model.get("passThrough")
 
   startStream: ->
     switch @model.get("encoder")

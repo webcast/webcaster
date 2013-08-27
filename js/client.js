@@ -1,5 +1,5 @@
 (function() {
-  var Webcaster, createVolumeMeter,
+  var Webcaster, createPassThrough, createVolumeMeter,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -26,14 +26,18 @@
     _.extend(Node.prototype, Backbone.Events);
 
     function Node(_arg) {
+      var _this = this;
       this.model = _arg.model;
       if (typeof webkitAudioContext !== "undefined") {
         this.context = new webkitAudioContext;
       } else {
         this.context = new AudioContext;
       }
-      this.webcast = this.context.createWebcastSource(4096, 2, this.model.get("passThrough"));
+      this.webcast = this.context.createWebcastSource(4096, 2);
       this.webcast.connect(this.context.destination);
+      this.model.on("change:passThrough", function() {
+        return _this.webcast.setPassThrough(_this.model.get("passThrough"));
+      });
     }
 
     Node.prototype.startStream = function() {
@@ -171,6 +175,25 @@
     return source;
   };
 
+  createPassThrough = function(context, model) {
+    var source;
+    source = context.createScriptProcessor(8192, 2, 2);
+    source.onaudioprocess = function(buf) {
+      var channel, channelData, _ref, _results;
+      channelData = buf.inputBuffer.getChannelData(channel);
+      _results = [];
+      for (channel = 0, _ref = buf.inputBuffer.numberOfChannels - 1; 0 <= _ref ? channel <= _ref : channel >= _ref; 0 <= _ref ? channel++ : channel--) {
+        if (model.get("passThrough")) {
+          _results.push(buf.outputBuffer.getChannelData(channel).set(channelData));
+        } else {
+          _results.push(buf.outputBuffer.getChannelData(channel).set(new Float32Array(channelData.length)));
+        }
+      }
+      return _results;
+    };
+    return source;
+  };
+
   Webcaster.Model.Playlist = (function(_super) {
 
     __extends(Playlist, _super);
@@ -184,8 +207,12 @@
       this.controls = options.controls;
       this.gain = this.node.context.createGain();
       this.gain.connect(this.node.webcast);
-      this.vuMetter = createVolumeMeter(this.node.context, this);
-      this.vuMetter.connect(this.gain);
+      this.vuMeter = createVolumeMeter(this.node.context, this);
+      this.vuMeter.connect(this.gain);
+      this.destination = this.vuMeter;
+      this.passThrough = createPassThrough(this.node.context, this);
+      this.passThrough.connect(this.node.context.destination);
+      this.destination.connect(this.passThrough);
       this.listenTo(this.controls, "change:slider", this.setGain);
       return this.setGain();
     };
@@ -254,7 +281,7 @@
       this.stop();
       return this.node.createSource(file, this.get("mad"), function(source) {
         _this.source = source;
-        source.connect(_this.vuMetter);
+        source.connect(_this.destination);
         source.play(file);
         return cb();
       });
@@ -553,6 +580,7 @@
       this.$("input").attr({
         disabled: "disabled"
       });
+      this.$("input.passThrough").removeAttr("disabled");
       return this.node.startStream();
     };
 

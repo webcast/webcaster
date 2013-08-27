@@ -58,6 +58,8 @@ class Webcaster.View.Settings extends Backbone.View
     @$(".stop-stream").show()
     @$(".start-stream").hide()
     @$("input").attr disabled: "disabled"
+    # Except passThrough
+    @$("input.passThrough").removeAttr "disabled"
 
     @node.startStream()
 

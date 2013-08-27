@@ -36,6 +36,8 @@ $ ->
           position    : "left"
           files       : []
           fileIndex   : -1
+          volumeLeft  : 0
+          volumeRight : 0
           passThrough :false
           loop        : true
         }, {
@@ -49,6 +51,8 @@ $ ->
           position    : "right"
           files       : []
           fileIndex   : -1
+          volumeLeft  : 0
+          volumeRight : 0
           passThrough : false
           loop        : true
         }, {

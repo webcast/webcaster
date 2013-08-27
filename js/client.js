@@ -1,5 +1,5 @@
 (function() {
-  var Webcaster,
+  var Webcaster, createVolumeMeter,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -145,6 +145,32 @@
 
   })(Backbone.Model);
 
+  createVolumeMeter = function(context, model) {
+    var source, sqrt2;
+    sqrt2 = Math.sqrt(2);
+    source = context.createScriptProcessor(8192, 2, 2);
+    source.onaudioprocess = function(buf) {
+      var channel, channelData, i, label, rms, _ref, _ref2, _results;
+      _results = [];
+      for (channel = 0, _ref = buf.inputBuffer.numberOfChannels - 1; 0 <= _ref ? channel <= _ref : channel >= _ref; 0 <= _ref ? channel++ : channel--) {
+        channelData = buf.inputBuffer.getChannelData(channel);
+        if (channel === 0) {
+          label = "volumeLeft";
+        } else {
+          label = "volumeRight";
+        }
+        rms = 0.0;
+        for (i = 0, _ref2 = channelData.length - 1; 0 <= _ref2 ? i <= _ref2 : i >= _ref2; 0 <= _ref2 ? i++ : i--) {
+          rms += Math.pow(channelData[i], 2);
+        }
+        model.set(label, 100 * sqrt2 * Math.sqrt(rms / parseFloat(channelData.length)));
+        _results.push(buf.outputBuffer.getChannelData(channel).set(channelData));
+      }
+      return _results;
+    };
+    return source;
+  };
+
   Webcaster.Model.Playlist = (function(_super) {
 
     __extends(Playlist, _super);
@@ -158,6 +184,8 @@
       this.controls = options.controls;
       this.gain = this.node.context.createGain();
       this.gain.connect(this.node.webcast);
+      this.vuMetter = createVolumeMeter(this.node.context, this);
+      this.vuMetter.connect(this.gain);
       this.listenTo(this.controls, "change:slider", this.setGain);
       return this.setGain();
     };
@@ -226,7 +254,7 @@
       this.stop();
       return this.node.createSource(file, this.get("mad"), function(source) {
         _this.source = source;
-        source.connect(_this.gain);
+        source.connect(_this.vuMetter);
         source.play(file);
         return cb();
       });
@@ -313,6 +341,12 @@
       this.model.on("change:fileIndex", function() {
         _this.$(".track-row").removeClass("success");
         return _this.$(".track-row-" + (_this.model.get("fileIndex"))).addClass("success");
+      });
+      this.model.on("change:volumeLeft", function() {
+        return _this.$(".volume-left").width("" + (_this.model.get("volumeLeft")) + "%");
+      });
+      this.model.on("change:volumeRight", function() {
+        return _this.$(".volume-right").width("" + (_this.model.get("volumeRight")) + "%");
       });
       if ((new Audio).canPlayType("audio/mpeg") === "") {
         return this.model.set({
@@ -573,6 +607,8 @@
             position: "left",
             files: [],
             fileIndex: -1,
+            volumeLeft: 0,
+            volumeRight: 0,
             passThrough: false,
             loop: true
           }, {
@@ -586,6 +622,8 @@
             position: "right",
             files: [],
             fileIndex: -1,
+            volumeLeft: 0,
+            volumeRight: 0,
             passThrough: false,
             loop: true
           }, {

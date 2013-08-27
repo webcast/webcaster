@@ -1,9 +1,37 @@
+createVolumeMeter = (context, model) ->
+  sqrt2 = Math.sqrt 2
+
+  source = context.createScriptProcessor 8192, 2, 2
+
+  source.onaudioprocess = (buf) ->
+    for channel in [0..buf.inputBuffer.numberOfChannels-1]
+      channelData = buf.inputBuffer.getChannelData channel
+
+      if channel == 0
+        label = "volumeLeft"
+      else
+        label = "volumeRight"
+
+      rms = 0.0
+      for i in [0..channelData.length-1]
+        rms += Math.pow channelData[i], 2
+
+      model.set label, 100*sqrt2*Math.sqrt(rms/parseFloat(channelData.length))
+
+      buf.outputBuffer.getChannelData(channel).set channelData
+
+  source
+
 class Webcaster.Model.Playlist extends Backbone.Model
   initialize: (attributes, options) ->
     @node = options.node
     @controls = options.controls
+
     @gain = @node.context.createGain()
     @gain.connect @node.webcast
+
+    @vuMetter = createVolumeMeter @node.context, this
+    @vuMetter.connect @gain
 
     @listenTo @controls, "change:slider", @setGain
     @setGain()
@@ -58,7 +86,7 @@ class Webcaster.Model.Playlist extends Backbone.Model
     @stop()
 
     @node.createSource file, @get("mad"), (@source) =>
-      source.connect @gain
+      source.connect @vuMetter
       source.play file
       cb()
 

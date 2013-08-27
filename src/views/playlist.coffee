@@ -22,6 +22,12 @@ class Webcaster.View.Playlist extends Backbone.View
       @$(".track-row").removeClass "success"
       @$(".track-row-#{@model.get("fileIndex")}").addClass "success"
 
+    @model.on "change:volumeLeft", =>
+      @$(".volume-left").width "#{@model.get("volumeLeft")}%"
+
+    @model.on "change:volumeRight", =>
+      @$(".volume-right").width "#{@model.get("volumeRight")}%"
+
     if (new Audio).canPlayType("audio/mpeg") == ""
       @model.set mad: true
 

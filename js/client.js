@@ -152,7 +152,12 @@
         audio: true,
         video: false
       }, function(stream) {
-        return cb(_this.context.createMediaStreamSource(stream));
+        var source;
+        source = _this.context.createMediaStreamSource(stream);
+        source.stop = function() {
+          return stream.stop();
+        };
+        return cb(source);
       });
     };
 

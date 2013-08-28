@@ -110,7 +110,12 @@ class Webcaster.Node
 
   createMicrophoneSource: (cb) ->
     getUserMedia.call navigator, {audio:true, video:false}, (stream) =>
-      cb @context.createMediaStreamSource(stream)
+      source = @context.createMediaStreamSource stream
+
+      source.stop = ->
+        stream.stop()
+
+      cb source
 
   sendMetadata: (data) ->
     @webcast.sendMetadata data

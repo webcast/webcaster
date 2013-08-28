@@ -14,12 +14,6 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
   initialize: ->
     super
 
-    # TODO
-    @listenTo Webcaster.node, "ended", ->
-      @$(".track-row").removeClass "success"
-      return unless @model.get("loop")
-      @play()
-
     @model.on "change:fileIndex", =>
       @$(".track-row").removeClass "success"
       @$(".track-row-#{@model.get("fileIndex")}").addClass "success"
@@ -73,8 +67,17 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
       min: 0
       max: 150
       value: 100
+      stop: =>
+        @$("a.ui-slider-handle").tooltip "hide"
       slide: (e, ui) =>
         @model.set trackGain: ui.value
+        @$("a.ui-slider-handle").tooltip "show"
+
+    @$("a.ui-slider-handle").tooltip
+      title: => @model.get "trackGain"
+      trigger: ""
+      animation: false
+      placement: "left"
 
     files = @model.get "files"
 

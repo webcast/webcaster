@@ -24,8 +24,17 @@ class Webcaster.View.Microphone extends Webcaster.View.Track
       min: 0
       max: 150
       value: 100
+      stop: =>
+        @$("a.ui-slider-handle").tooltip "hide"
       slide: (e, ui) =>
         @model.set trackGain: ui.value
+        @$("a.ui-slider-handle").tooltip "show"
+
+    @$("a.ui-slider-handle").tooltip
+      title: => @model.get "trackGain"
+      trigger: ""
+      animation: false
+      placement: "left"
 
     this
 

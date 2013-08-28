@@ -588,11 +588,23 @@
         min: 0,
         max: 150,
         value: 100,
+        stop: function() {
+          return _this.$("a.ui-slider-handle").tooltip("hide");
+        },
         slide: function(e, ui) {
-          return _this.model.set({
+          _this.model.set({
             trackGain: ui.value
           });
+          return _this.$("a.ui-slider-handle").tooltip("show");
         }
+      });
+      this.$("a.ui-slider-handle").tooltip({
+        title: function() {
+          return _this.model.get("trackGain");
+        },
+        trigger: "",
+        animation: false,
+        placement: "left"
       });
       return this;
     };
@@ -621,11 +633,23 @@
     Mixer.prototype.render = function() {
       var _this = this;
       this.$(".slider").slider({
+        stop: function() {
+          return _this.$("a.ui-slider-handle").tooltip("hide");
+        },
         slide: function(e, ui) {
-          return _this.model.set({
+          _this.model.set({
             slider: ui.value
           });
+          return _this.$("a.ui-slider-handle").tooltip("show");
         }
+      });
+      this.$("a.ui-slider-handle").tooltip({
+        title: function() {
+          return _this.model.get("slider");
+        },
+        trigger: "",
+        animation: false,
+        placement: "bottom"
       });
       return this;
     };
@@ -658,11 +682,6 @@
     Playlist.prototype.initialize = function() {
       var _this = this;
       Playlist.__super__.initialize.apply(this, arguments);
-      this.listenTo(Webcaster.node, "ended", function() {
-        this.$(".track-row").removeClass("success");
-        if (!this.model.get("loop")) return;
-        return this.play();
-      });
       this.model.on("change:fileIndex", function() {
         _this.$(".track-row").removeClass("success");
         return _this.$(".track-row-" + (_this.model.get("fileIndex"))).addClass("success");
@@ -718,11 +737,23 @@
         min: 0,
         max: 150,
         value: 100,
+        stop: function() {
+          return _this.$("a.ui-slider-handle").tooltip("hide");
+        },
         slide: function(e, ui) {
-          return _this.model.set({
+          _this.model.set({
             trackGain: ui.value
           });
+          return _this.$("a.ui-slider-handle").tooltip("show");
         }
+      });
+      this.$("a.ui-slider-handle").tooltip({
+        title: function() {
+          return _this.model.get("trackGain");
+        },
+        trigger: "",
+        animation: false,
+        placement: "left"
       });
       files = this.model.get("files");
       this.$(".files-table").empty();

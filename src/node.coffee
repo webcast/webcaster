@@ -86,7 +86,7 @@ class Webcaster.Node
 
       cb source
 
-  createMadSource: (file, model, cb) ->
+  createMadSource: ({file}, model, cb) ->
     # TODO: "ended" event
     file.createMadDecoder (decoder, format) =>
       source = @context.createMadSource 1024, decoder, format
@@ -103,19 +103,24 @@ class Webcaster.Node
   createFileSource: (file, model, cb) ->
     @source?.disconnect()
 
-    if /\.mp3$/i.test(file.name) and model.get("mad")
+    if /\.mp3$/i.test(file.file.name) and model.get("mad")
       @createMadSource file, model, cb
     else
       @createAudioSource file, model, cb
 
   createMicrophoneSource: (cb) ->
-    getUserMedia.call navigator, {audio:true, video:false}, (stream) =>
+    onSuccess = (stream) =>
       source = @context.createMediaStreamSource stream
 
       source.stop = ->
         stream.stop()
 
       cb source
+
+    onError = =>
+      console.log "error"
+
+    getUserMedia.call navigator, {audio:true, video:false}, onSuccess, onError
 
   sendMetadata: (data) ->
     @webcast.sendMetadata data

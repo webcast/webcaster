@@ -57,6 +57,12 @@ div.volume-bar {
   100% { opacity: 1.0; }
 }
 
+@-moz-keyframes blink {
+  0% { opacity: 1.0; }
+  50% { opacity: 0.0; }
+  100% { opacity: 1.0; }
+}
+
 .blink {
     -webkit-animation: blink 1.1s linear infinite;
     -moz-animation: blink 1.1s linear infinite;
@@ -75,8 +81,15 @@ div.volume-bar {
   100% { background: rgb(250,167,50); }
 }
 
+@-moz-keyframes btn-cued {
+  0% { background: rgb(250,167,50); }
+  50% { background: rgb(238,238,238); }
+  100% { background: rgb(250,167,50); }
+}
+
 .btn-cued {
   color: "black";
+  background-image: none;
   -webkit-animation: btn-cued 1.1s linear infinite;
   -moz-animation: btn-cued 1.1s linear infinite;
   animation: btn-cued 1.1s linear infinite;
@@ -98,7 +111,14 @@ div.microphone {
   100% { background: rgb(218, 79, 73) }
 }
 
+@-moz-keyframes btn-recording {
+  0% { background: rgb(218, 79, 73) }
+  50% { background: rgb(238,238,238); }
+  100% { background: rgb(218, 79, 73) }
+}
+
 .btn-recording {
+  background-image: none;
   -webkit-animation: btn-recording 1.1s linear infinite;
   -moz-animation: btn-recording 1.1s linear infinite;
   animation: btn-recording 1.1s linear infinite;

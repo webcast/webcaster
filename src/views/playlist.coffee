@@ -8,6 +8,7 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
     "click .progress-seek"   : "onSeek"
     "click .passThrough"     : "onPassThrough"
     "change .files"          : "onFiles"
+    "change .playThrough"    : "onPlayThrough"
     "change .loop"           : "onLoop"
     "submit"                 : "onSubmit"
 
@@ -110,10 +111,7 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
     this
 
   play: (options) ->
-    if @model.isPlaying()
-      @model.togglePause()
-      return
-
+    @model.stop()
     return unless @file = @model.selectFile options
 
     @$(".play-control").attr disabled: "disabled"
@@ -121,6 +119,10 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
 
   onPlay: (e) ->
     e.preventDefault()
+    if @model.isPlaying()
+      @model.togglePause()
+      return
+
     @play()
 
   onPause: (e) ->
@@ -129,13 +131,13 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
 
   onPrevious: (e) ->
     e.preventDefault()
-    return unless @file?
+    return unless @model.isPlaying()?
 
     @play backward: true
 
   onNext: (e) ->
     e.preventDefault()
-    return unless @file?
+    return unless @model.isPlaying()
 
     @play()
 
@@ -158,6 +160,9 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
     @model.appendFiles files, =>
       @$(".files").removeAttr("disabled").val ""
       @render()
+
+  onPlayThrough: (e) ->
+    @model.set playThrough: $(e.target).is(":checked")
 
   onLoop: (e) ->
     @model.set loop: $(e.target).is(":checked")

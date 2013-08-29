@@ -120,8 +120,10 @@
       });
     };
 
-    Node.prototype.createMadSource = function(file, model, cb) {
-      var _this = this;
+    Node.prototype.createMadSource = function(_arg, model, cb) {
+      var file,
+        _this = this;
+      file = _arg.file;
       return file.createMadDecoder(function(decoder, format) {
         var fn, source;
         source = _this.context.createMadSource(1024, decoder, format);
@@ -139,7 +141,7 @@
     Node.prototype.createFileSource = function(file, model, cb) {
       var _ref;
       if ((_ref = this.source) != null) _ref.disconnect();
-      if (/\.mp3$/i.test(file.name) && model.get("mad")) {
+      if (/\.mp3$/i.test(file.file.name) && model.get("mad")) {
         return this.createMadSource(file, model, cb);
       } else {
         return this.createAudioSource(file, model, cb);
@@ -147,18 +149,23 @@
     };
 
     Node.prototype.createMicrophoneSource = function(cb) {
-      var _this = this;
-      return getUserMedia.call(navigator, {
-        audio: true,
-        video: false
-      }, function(stream) {
+      var onError, onSuccess,
+        _this = this;
+      onSuccess = function(stream) {
         var source;
         source = _this.context.createMediaStreamSource(stream);
         source.stop = function() {
           return stream.stop();
         };
         return cb(source);
-      });
+      };
+      onError = function() {
+        return console.log("error");
+      };
+      return getUserMedia.call(navigator, {
+        audio: true,
+        video: false
+      }, onSuccess, onError);
     };
 
     Node.prototype.sendMetadata = function(data) {
@@ -216,9 +223,10 @@
     };
 
     Track.prototype.createControlsNode = function() {
-      var bufferLog, bufferSize, log10, source,
+      var bufferLength, bufferLog, bufferSize, log10, source,
         _this = this;
       bufferSize = 4096;
+      bufferLength = parseFloat(bufferSize) / parseFloat(this.node.context.sampleRate);
       bufferLog = Math.log(parseFloat(bufferSize));
       log10 = 2.0 * Math.log(10);
       source = this.node.context.createScriptProcessor(bufferSize, 2, 2);
@@ -227,6 +235,10 @@
         ret = {};
         if (((_ref = _this.source) != null ? _ref.position : void 0) != null) {
           ret["position"] = _this.source.position();
+        } else {
+          if (_this.source != null) {
+            ret["position"] = parseFloat(_this.get("position")) + bufferLength;
+          }
         }
         _results = [];
         for (channel = 0, _ref2 = buf.inputBuffer.numberOfChannels - 1; 0 <= _ref2 ? channel <= _ref2 : channel >= _ref2; 0 <= _ref2 ? channel++ : channel--) {
@@ -435,8 +447,14 @@
       index = this.get("fileIndex");
       if (files.length === 0) return;
       index += options.backward ? -1 : 1;
-      if (index < 0 || index >= files.length) {
-        if (!this.get("loop")) return;
+      if (index < 0) index = files.length - 1;
+      if (index >= files.length) {
+        if (!this.get("loop")) {
+          this.set({
+            fileIndex: -1
+          });
+          return;
+        }
         if (index < 0) {
           index = files.length - 1;
         } else {
@@ -455,12 +473,19 @@
       this.prepare();
       this.setMixGain();
       return this.node.createFileSource(file, this, function(source) {
+        var _ref;
         _this.source = source;
         source.connect(_this.destination);
         if (_this.source.duration != null) {
           _this.set({
             duration: _this.source.duration()
           });
+        } else {
+          if (((_ref = file.audio) != null ? _ref.length : void 0) != null) {
+            _this.set({
+              duration: parseFloat(file.audio.length)
+            });
+          }
         }
         source.play(file);
         return _this.trigger("playing");
@@ -469,7 +494,7 @@
 
     Playlist.prototype.onEnd = function() {
       this.stop();
-      if (this.get("loop")) return this.play(this.selectFile());
+      if (this.get("playThrough")) return this.play(this.selectFile());
     };
 
     return Playlist;
@@ -675,6 +700,7 @@
       "click .progress-seek": "onSeek",
       "click .passThrough": "onPassThrough",
       "change .files": "onFiles",
+      "change .playThrough": "onPlayThrough",
       "change .loop": "onLoop",
       "submit": "onSubmit"
     };
@@ -778,10 +804,7 @@
     };
 
     Playlist.prototype.play = function(options) {
-      if (this.model.isPlaying()) {
-        this.model.togglePause();
-        return;
-      }
+      this.model.stop();
       if (!(this.file = this.model.selectFile(options))) return;
       this.$(".play-control").attr({
         disabled: "disabled"
@@ -791,6 +814,10 @@
 
     Playlist.prototype.onPlay = function(e) {
       e.preventDefault();
+      if (this.model.isPlaying()) {
+        this.model.togglePause();
+        return;
+      }
       return this.play();
     };
 
@@ -801,7 +828,7 @@
 
     Playlist.prototype.onPrevious = function(e) {
       e.preventDefault();
-      if (this.file == null) return;
+      if (this.model.isPlaying() == null) return;
       return this.play({
         backward: true
       });
@@ -809,7 +836,7 @@
 
     Playlist.prototype.onNext = function(e) {
       e.preventDefault();
-      if (this.file == null) return;
+      if (!this.model.isPlaying()) return;
       return this.play();
     };
 
@@ -835,6 +862,12 @@
       return this.model.appendFiles(files, function() {
         _this.$(".files").removeAttr("disabled").val("");
         return _this.render();
+      });
+    };
+
+    Playlist.prototype.onPlayThrough = function(e) {
+      return this.model.set({
+        playThrough: $(e.target).is(":checked")
       });
     };
 
@@ -1003,6 +1036,7 @@
         }),
         microphone: new Webcaster.View.Microphone({
           model: new Webcaster.Model.Microphone({
+            trackGain: 100,
             passThrough: false
           }, {
             mixer: Webcaster.mixer,
@@ -1020,7 +1054,7 @@
             trackGain: 100,
             passThrough: false,
             position: 0.0,
-            loop: true
+            loop: false
           }, {
             mixer: Webcaster.mixer,
             node: Webcaster.node
@@ -1037,7 +1071,7 @@
             trackGain: 100,
             passThrough: false,
             position: 0.0,
-            loop: true
+            loop: false
           }, {
             mixer: Webcaster.mixer,
             node: Webcaster.node

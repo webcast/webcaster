@@ -36,6 +36,7 @@ $ ->
 
       microphone: new Webcaster.View.Microphone
         model: new Webcaster.Model.Microphone({
+          trackGain   : 100
           passThrough : false
         }, {
           mixer: Webcaster.mixer
@@ -51,9 +52,9 @@ $ ->
           volumeLeft  : 0
           volumeRight : 0
           trackGain   : 100
-          passThrough :false
+          passThrough : false
           position    : 0.0
-          loop        : true
+          loop        : false
         }, {
           mixer : Webcaster.mixer
           node  : Webcaster.node
@@ -70,7 +71,7 @@ $ ->
           trackGain   : 100
           passThrough : false
           position    : 0.0
-          loop        : true
+          loop        : false
         }, {
           mixer : Webcaster.mixer
           node  : Webcaster.node

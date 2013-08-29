@@ -43,8 +43,12 @@ class Webcaster.Model.Playlist extends Webcaster.Model.Track
 
     index += if options.backward then -1 else 1
 
-    if index < 0 or index >= files.length
-      return unless @get("loop")
+    index = files.length-1 if index < 0
+
+    if index >= files.length
+      unless @get("loop")
+        @set fileIndex: -1
+        return
 
       if index < 0
         index = files.length-1
@@ -66,6 +70,8 @@ class Webcaster.Model.Playlist extends Webcaster.Model.Track
 
       if @source.duration?
         @set duration: @source.duration()
+      else
+        @set duration: parseFloat(file.audio.length) if file.audio?.length?
 
       source.play file
       @trigger "playing"
@@ -73,4 +79,4 @@ class Webcaster.Model.Playlist extends Webcaster.Model.Track
   onEnd: ->
     @stop()
 
-    @play @selectFile() if @get("loop")
+    @play @selectFile() if @get("playThrough")

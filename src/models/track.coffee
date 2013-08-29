@@ -24,6 +24,7 @@ class Webcaster.Model.Track extends Backbone.Model
 
   createControlsNode: ->
     bufferSize = 4096
+    bufferLength = parseFloat(bufferSize)/parseFloat(@node.context.sampleRate)
 
     bufferLog = Math.log parseFloat(bufferSize)
     log10     = 2.0 * Math.log(10)
@@ -35,6 +36,9 @@ class Webcaster.Model.Track extends Backbone.Model
 
       if @source?.position?
         ret["position"] = @source.position()
+      else
+        if @source?
+          ret["position"] = parseFloat(@get("position"))+bufferLength
 
       for channel in [0..buf.inputBuffer.numberOfChannels-1]
         channelData = buf.inputBuffer.getChannelData channel

@@ -19,6 +19,8 @@ class Webcaster.View.Settings extends Backbone.View
       else
         @$(".passThrough").addClass("btn-info").removeClass "btn-cued"
 
+    @model.on "change:encoder", @checkEncoder
+
   render: ->
     samplerate = @model.get "samplerate"
     @$(".samplerate").empty()
@@ -35,6 +37,13 @@ class Webcaster.View.Settings extends Backbone.View
         appendTo @$(".bitrate")
 
     this
+
+  checkEncoder: =>
+    if @model.get("encoder") == "ogg"
+      @$(".asynchronous").removeAttr "checked"
+      @$(".samplerate,.bitrate,.asynchronous").attr disabled: "disabled"
+    else
+      @$(".samplerate,.bitrate,.asynchronous").removeAttr "disabled"
 
   onUri: ->
     @model.set uri: @$(".uri").val()
@@ -74,6 +83,8 @@ class Webcaster.View.Settings extends Backbone.View
     @$(".stop-stream").hide()
     @$(".start-stream").show()
     @$("input, select").removeAttr "disabled"
+
+    @checkEncoder()
 
     @node.stopStream()
 

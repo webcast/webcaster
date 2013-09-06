@@ -49,6 +49,9 @@
         case "mp3":
           encoder = Webcast.Encoder.Mp3;
           break;
+        case "ogg":
+          encoder = Webcast.Recorder;
+          break;
         case "raw":
           encoder = Webcast.Encoder.Raw;
       }
@@ -57,14 +60,14 @@
         samplerate: this.model.get("samplerate"),
         bitrate: this.model.get("bitrate")
       });
-      if (this.model.get("samplerate") !== this.context.sampleRate) {
+      if (this.model.get("encoder") !== "ogg" && this.model.get("samplerate") !== this.context.sampleRate) {
         this.encoder = new Webcast.Encoder.Resample({
           encoder: this.encoder,
           type: Samplerate.LINEAR,
           samplerate: this.context.sampleRate
         });
       }
-      if (this.model.get("asynchronous")) {
+      if (this.model.get("encoder") !== "ogg" && this.model.get("asynchronous")) {
         this.encoder = new Webcast.Encoder.Asynchronous({
           encoder: this.encoder,
           scripts: ["https://rawgithub.com/webcast/libsamplerate.js/master/dist/libsamplerate.js", "https://rawgithub.com/savonet/shine/master/js/dist/libshine.js", "https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"]
@@ -886,6 +889,7 @@
     __extends(Settings, _super);
 
     function Settings() {
+      this.checkEncoder = __bind(this.checkEncoder, this);
       Settings.__super__.constructor.apply(this, arguments);
     }
 
@@ -906,13 +910,14 @@
     Settings.prototype.initialize = function(_arg) {
       var _this = this;
       this.node = _arg.node;
-      return this.model.on("change:passThrough", function() {
+      this.model.on("change:passThrough", function() {
         if (_this.model.get("passThrough")) {
           return _this.$(".passThrough").addClass("btn-cued").removeClass("btn-info");
         } else {
           return _this.$(".passThrough").addClass("btn-info").removeClass("btn-cued");
         }
       });
+      return this.model.on("change:encoder", this.checkEncoder);
     };
 
     Settings.prototype.render = function() {
@@ -933,6 +938,17 @@
         return $("<option value='" + rate + "' " + selected + ">" + rate + "</option>").appendTo(_this.$(".bitrate"));
       });
       return this;
+    };
+
+    Settings.prototype.checkEncoder = function() {
+      if (this.model.get("encoder") === "ogg") {
+        this.$(".asynchronous").removeAttr("checked");
+        return this.$(".samplerate,.bitrate,.asynchronous").attr({
+          disabled: "disabled"
+        });
+      } else {
+        return this.$(".samplerate,.bitrate,.asynchronous").removeAttr("disabled");
+      }
     };
 
     Settings.prototype.onUri = function() {
@@ -991,6 +1007,7 @@
       this.$(".stop-stream").hide();
       this.$(".start-stream").show();
       this.$("input, select").removeAttr("disabled");
+      this.checkEncoder();
       return this.node.stopStream();
     };
 
@@ -1014,7 +1031,7 @@
       samplerates: [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000],
       channels: 2,
       encoder: "mp3",
-      asynchronous: true,
+      asynchronous: false,
       passThrough: false,
       mad: false
     }, {

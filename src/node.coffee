@@ -19,6 +19,8 @@ class Webcaster.Node
     switch @model.get("encoder")
       when "mp3"
         encoder = Webcast.Encoder.Mp3
+      when "ogg"
+        encoder = Webcast.Recorder
       when "raw"
         encoder = Webcast.Encoder.Raw
 
@@ -27,13 +29,13 @@ class Webcaster.Node
       samplerate : @model.get("samplerate")
       bitrate    : @model.get("bitrate")
 
-    if @model.get("samplerate") != @context.sampleRate
+    if @model.get("encoder") != "ogg" and @model.get("samplerate") != @context.sampleRate
       @encoder = new Webcast.Encoder.Resample
         encoder    : @encoder
         type       : Samplerate.LINEAR,
         samplerate : @context.sampleRate
 
-    if @model.get("asynchronous")
+    if @model.get("encoder") != "ogg" and @model.get("asynchronous")
       @encoder = new Webcast.Encoder.Asynchronous
         encoder : @encoder
         scripts: [

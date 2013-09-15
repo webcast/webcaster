@@ -30,7 +30,8 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
       if @model.get("duration")
         @$(".progress-volume").css "cursor", "pointer"
       else
-        @$(".track-position").addClass("progress-striped active").width "100%"
+        @$(".track-position").addClass("progress-striped active")
+        @setTrackProgress 100
 
     @model.on "paused", =>
       @$(".play-audio").show()
@@ -43,7 +44,8 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
       @$(".play-audio").show()
       @$(".pause-audio").hide()
       @$(".progress-volume").css "cursor", ""
-      @$(".track-position").removeClass("progress-striped active").width "0%"
+      @$(".track-position").removeClass("progress-striped active")
+      @setTrackProgress 0
       @$(".track-position-text").removeClass("blink").text ""
       @$(".volume-left").width "0%"
       @$(".volume-right").width "0%"
@@ -53,8 +55,7 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
 
       position = parseFloat @model.get("position")
 
-      @$(".track-position").
-        width "#{100.0*position/parseFloat(duration)}%"
+      @setTrackProgress 100.0*position/parseFloat(duration)
 
       @$(".track-position-text").
         text "#{Webcaster.prettifyTime(position)} / #{Webcaster.prettifyTime(duration)}"
@@ -109,6 +110,9 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
     @$(".playlist-table").show()
 
     this
+
+  setTrackProgress: (percent) ->
+    @$(".track-position").width "#{percent*$(".progress-volume").width()/100}px"
 
   play: (options) ->
     @model.stop()

@@ -722,7 +722,8 @@
         if (_this.model.get("duration")) {
           return _this.$(".progress-volume").css("cursor", "pointer");
         } else {
-          return _this.$(".track-position").addClass("progress-striped active").width("100%");
+          _this.$(".track-position").addClass("progress-striped active");
+          return _this.setTrackProgress(100);
         }
       });
       this.model.on("paused", function() {
@@ -736,7 +737,8 @@
         _this.$(".play-audio").show();
         _this.$(".pause-audio").hide();
         _this.$(".progress-volume").css("cursor", "");
-        _this.$(".track-position").removeClass("progress-striped active").width("0%");
+        _this.$(".track-position").removeClass("progress-striped active");
+        _this.setTrackProgress(0);
         _this.$(".track-position-text").removeClass("blink").text("");
         _this.$(".volume-left").width("0%");
         return _this.$(".volume-right").width("0%");
@@ -745,7 +747,7 @@
         var duration, position;
         if (!(duration = _this.model.get("duration"))) return;
         position = parseFloat(_this.model.get("position"));
-        _this.$(".track-position").width("" + (100.0 * position / parseFloat(duration)) + "%");
+        _this.setTrackProgress(100.0 * position / parseFloat(duration));
         return _this.$(".track-position-text").text("" + (Webcaster.prettifyTime(position)) + " / " + (Webcaster.prettifyTime(duration)));
       });
       if ((new Audio).canPlayType("audio/mpeg") === "") {
@@ -801,6 +803,10 @@
       });
       this.$(".playlist-table").show();
       return this;
+    };
+
+    Playlist.prototype.setTrackProgress = function(percent) {
+      return this.$(".track-position").width("" + (percent * $(".progress-volume").width() / 100) + "px");
     };
 
     Playlist.prototype.play = function(options) {

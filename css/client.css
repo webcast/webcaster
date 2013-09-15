@@ -22,6 +22,12 @@ span.track-position-text {
   width: 275px; !important;
 }
 
+div.track-position {
+  position: absolute;
+  height: 20px !important;
+  width: 0px;
+}
+
 div.progress-left {
   height: 10px;
   width: 275px !important;

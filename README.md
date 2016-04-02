@@ -1,4 +1,4 @@
-# webcaster
+# Webcaster
 
 This is a demonstation client for the webcast websocket protocol. It looks like this:
 

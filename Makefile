@@ -9,7 +9,7 @@ OPTIONS:=-c -j js/client.js $(FILES)
 all:
 	coffee $(OPTIONS)
 
-test:
+run:
 	python -m SimpleHTTPServer
 
 watch:

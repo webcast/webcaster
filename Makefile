@@ -9,6 +9,10 @@ OPTIONS:=-c -j js/client.js $(FILES)
 all:
 	coffee $(OPTIONS)
 
+init:
+	git submodule init
+	git submodule update
+
 run:
 	python -m SimpleHTTPServer
 

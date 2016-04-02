@@ -6,6 +6,7 @@ This is a demonstation client for the webcast websocket protocol. It looks like 
 
 You can run it locally by cloning this repository and issuing the following command:
 ```
+make init
 make run
 ```
 

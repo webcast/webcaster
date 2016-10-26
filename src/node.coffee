@@ -113,7 +113,7 @@ class Webcaster.Node
       source = @context.createMediaStreamSource stream
 
       source.stop = ->
-        stream.stop()
+        stream.getAudioTracks()?[0].stop()
 
       cb source
 

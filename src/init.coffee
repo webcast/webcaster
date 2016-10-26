@@ -13,7 +13,7 @@ $ ->
                     22050, 24000, 32000, 44100, 48000 ]
     channels:     2
     encoder:      "mp3"
-    asynchronous: true
+    asynchronous: false
     passThrough:  false
     mad:          false
   }, {

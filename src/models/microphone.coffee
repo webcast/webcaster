@@ -3,5 +3,5 @@ class Webcaster.Model.Microphone extends Webcaster.Model.Track
     @prepare()
 
     @node.createMicrophoneSource (@source) =>
-      source.connect @destination
+      @source.connect @destination
       @trigger "playing"

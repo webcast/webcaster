@@ -66,14 +66,14 @@ class Webcaster.Model.Playlist extends Webcaster.Model.Track
     @setMixGain()
 
     @node.createFileSource file, this, (@source) =>
-      source.connect @destination
+      @source.connect @destination
 
       if @source.duration?
         @set duration: @source.duration()
       else
         @set duration: parseFloat(file.audio.length) if file.audio?.length?
 
-      source.play file
+      @source.play file
       @trigger "playing"
 
   onEnd: ->

@@ -100,7 +100,7 @@
     };
 
     Node.prototype.createAudioSource = function(arg, model, cb) {
-      var audio, el, file;
+      var audio, el, file, source;
       file = arg.file, audio = arg.audio;
       el = new Audio(URL.createObjectURL(file));
       el.controls = false;
@@ -111,9 +111,12 @@
           return model.onEnd();
         };
       })(this));
+      source = null;
       return el.addEventListener("canplay", (function(_this) {
         return function() {
-          var source;
+          if (source != null) {
+            return;
+          }
           source = _this.context.createMediaElementSource(el);
           source.play = function() {
             return el.play();
@@ -145,35 +148,12 @@
       })(this));
     };
 
-    Node.prototype.createMadSource = function(arg, model, cb) {
-      var file;
-      file = arg.file;
-      return file.createMadDecoder((function(_this) {
-        return function(decoder, format) {
-          var fn, source;
-          source = _this.context.createMadSource(1024, decoder, format);
-          source.play = function() {
-            return source.start(0);
-          };
-          fn = source.stop;
-          source.stop = function() {
-            return fn.call(source, 0);
-          };
-          return cb(source);
-        };
-      })(this));
-    };
-
     Node.prototype.createFileSource = function(file, model, cb) {
       var ref;
       if ((ref = this.source) != null) {
         ref.disconnect();
       }
-      if (/\.mp3$/i.test(file.file.name) && model.get("mad")) {
-        return this.createMadSource(file, model, cb);
-      } else {
-        return this.createAudioSource(file, model, cb);
-      }
+      return this.createAudioSource(file, model, cb);
     };
 
     Node.prototype.createMicrophoneSource = function(constraints, cb) {
@@ -733,7 +713,7 @@
             devices = _.filter(devices, function(arg) {
               var deviceId, kind;
               kind = arg.kind, deviceId = arg.deviceId;
-              return kind === "audioinput" && deviceId !== "default";
+              return kind === "audioinput";
             });
             if (_.isEmpty(devices)) {
               return;
@@ -945,7 +925,7 @@
           } else {
             klass = "";
           }
-          return _this.$(".files-table").append("<tr class='track-row track-row-" + index + " " + klass + "'>\n  <td>" + (index + 1) + "</td>\n  <td>" + metadata.title + "</td>\n  <td>" + metadata.artist + "</td>\n  <td>" + time + "</td>\n</tr>");
+          return _this.$(".files-table").append("<tr class='track-row track-row-" + index + " " + klass + "'>\n  <td>" + (index + 1) + "</td>\n  <td>" + ((metadata != null ? metadata.title : void 0) || "Unknown Title") + "</td>\n  <td>" + ((metadata != null ? metadata.artist : void 0) || "Unknown Artist") + "</td>\n  <td>" + time + "</td>\n</tr>");
         };
       })(this));
       this.$(".playlist-table").show();
@@ -953,7 +933,8 @@
     };
 
     Playlist.prototype.setTrackProgress = function(percent) {
-      return this.$(".track-position").width((percent * $(".progress-volume").width() / 100) + "px");
+      this.$(".track-position").width((percent * $(".progress-volume").width() / 100) + "px");
+      return this.$(".track-position-text,.progress-seek").width($(".progress-volume").width());
     };
 
     Playlist.prototype.play = function(options) {

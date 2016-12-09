@@ -39,7 +39,7 @@ class Webcaster.View.Microphone extends Webcaster.View.Track
     navigator.mediaDevices.getUserMedia({audio:true, video:false}).then =>
       navigator.mediaDevices.enumerateDevices().then (devices) =>
         devices = _.filter devices, ({kind, deviceId}) ->
-          kind == "audioinput" && deviceId  != "default"
+          kind == "audioinput"
 
         return if _.isEmpty devices
 

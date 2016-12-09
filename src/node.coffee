@@ -54,7 +54,11 @@ class Webcaster.Node
     el.addEventListener "ended", =>
       model.onEnd()
 
+    source = null
+
     el.addEventListener "canplay", =>
+      return if source?
+
       source = @context.createMediaElementSource el
 
       source.play = ->
@@ -84,27 +88,10 @@ class Webcaster.Node
 
       cb source
 
-  createMadSource: ({file}, model, cb) ->
-    # TODO: "ended" event
-    file.createMadDecoder (decoder, format) =>
-      source = @context.createMadSource 1024, decoder, format
-
-      source.play = ->
-        source.start 0
-
-      fn = source.stop
-      source.stop = ->
-        fn.call source, 0
-
-      cb source
-
   createFileSource: (file, model, cb) ->
     @source?.disconnect()
 
-    if /\.mp3$/i.test(file.file.name) and model.get("mad")
-      @createMadSource file, model, cb
-    else
-      @createAudioSource file, model, cb
+    @createAudioSource file, model, cb
 
   createMicrophoneSource: (constraints, cb) ->
     navigator.mediaDevices.getUserMedia(constraints).then (stream) =>

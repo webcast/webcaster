@@ -18,6 +18,7 @@ div.progress-volume {
 span.track-position-text {
   position: absolute;
   text-align: center;
+  z-index: 999;
 }
 
 div.track-position {

@@ -101,8 +101,8 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
       @$(".files-table").append """
         <tr class='track-row track-row-#{index} #{klass}'>
           <td>#{index+1}</td>
-          <td>#{metadata.title}</td>
-          <td>#{metadata.artist}</td>
+          <td>#{metadata?.title || "Unknown Title"}</td>
+          <td>#{metadata?.artist || "Unknown Artist"}</td>
           <td>#{time}</td>
         </tr>
                                 """
@@ -113,6 +113,7 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
 
   setTrackProgress: (percent) ->
     @$(".track-position").width "#{percent*$(".progress-volume").width()/100}px"
+    @$(".track-position-text,.progress-seek").width $(".progress-volume").width()
 
   play: (options) ->
     @model.stop()

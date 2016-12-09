@@ -414,7 +414,6 @@
       } else {
         constraints.audio = true;
       }
-      console.log(constraints);
       return this.node.createMicrophoneSource(constraints, (function(_this) {
         return function(source1) {
           _this.source = source1;

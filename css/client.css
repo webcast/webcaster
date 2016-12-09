@@ -1,25 +1,23 @@
 div.volume-slider {
-  position: absolute;
+  float: left;
   height: 165px;
+  margin-right: 5px;
 }
 
 div.progress-seek {
   position: absolute;
   display: inline-block;
   height: 20px;
-  width: 275px !important;
   z-index: 1000;
 }
 
 div.progress-volume {
   margin-left: 25px;
-  width: 275px !important;
 }
 
 span.track-position-text {
   position: absolute;
   text-align: center;
-  width: 275px; !important;
 }
 
 div.track-position {
@@ -30,14 +28,12 @@ div.track-position {
 
 div.progress-left {
   height: 10px;
-  width: 275px !important;
   margin-bottom: 2px;
   margin-left: 25px;
 }
 
 div.progress-right {
   height: 10px;
-  width: 275px !important;
   margin-bottom: 10px;
   margin-left: 25px;
 }

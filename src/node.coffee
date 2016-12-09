@@ -1,5 +1,3 @@
-getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia
-
 class Webcaster.Node
   _.extend @prototype, Backbone.Events
 
@@ -108,19 +106,14 @@ class Webcaster.Node
     else
       @createAudioSource file, model, cb
 
-  createMicrophoneSource: (cb) ->
-    onSuccess = (stream) =>
+  createMicrophoneSource: (constraints, cb) ->
+    navigator.mediaDevices.getUserMedia(constraints).then (stream) =>
       source = @context.createMediaStreamSource stream
 
       source.stop = ->
         stream.getAudioTracks()?[0].stop()
 
       cb source
-
-    onError = =>
-      console.log "error"
-
-    getUserMedia.call navigator, {audio:true, video:false}, onSuccess, onError
 
   sendMetadata: (data) ->
     @webcast.sendMetadata data

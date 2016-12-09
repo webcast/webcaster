@@ -36,6 +36,27 @@ class Webcaster.View.Microphone extends Webcaster.View.Track
       animation: false
       placement: "left"
 
+    navigator.mediaDevices.getUserMedia({audio:true, video:false}).then =>
+      navigator.mediaDevices.enumerateDevices().then (devices) =>
+        devices = _.filter devices, ({kind, deviceId}) ->
+          kind == "audioinput" && deviceId  != "default"
+
+        return if _.isEmpty devices
+
+        $select = @$(".microphone-entry select")
+
+        _.each devices, ({label,deviceId}) ->
+          $select.append "<option value='#{deviceId}'>#{label}</option>"
+
+        $select.find("option:eq(0)").prop "selected", true
+
+        @model.set "device", $select.val()
+
+        $select.select ->
+          @model.set "device", $select.val()
+
+        @$(".microphone-entry").show()
+
     this
 
   onRecord: (e) ->

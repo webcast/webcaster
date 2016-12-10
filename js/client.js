@@ -1191,6 +1191,7 @@
             volumeRight: 0,
             trackGain: 100,
             passThrough: false,
+            playThrough: true,
             position: 0.0,
             loop: false
           }, {
@@ -1208,6 +1209,7 @@
             volumeRight: 0,
             trackGain: 100,
             passThrough: false,
+            playThrough: true,
             position: 0.0,
             loop: false
           }, {

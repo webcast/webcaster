@@ -871,7 +871,7 @@
     };
 
     Playlist.prototype.render = function() {
-      var a, files, formats;
+      var files;
       this.$(".volume-slider").slider({
         orientation: "vertical",
         min: 0,
@@ -901,16 +901,6 @@
         animation: false,
         placement: "left"
       });
-      a = new Audio;
-      formats = _.filter(this.model.get("formats"), function(format) {
-        var canPlay;
-        canPlay = a.canPlayType(format);
-        return canPlay === "probably" || canPlay === "maybe";
-      });
-      this.model.set({
-        formats: formats
-      });
-      this.$("input.files").attr("accept", formats.join(","));
       files = this.model.get("files");
       this.$(".files-table").empty();
       if (!(files.length > 0)) {
@@ -1194,7 +1184,6 @@
         }),
         playlistLeft: new Webcaster.View.Playlist({
           model: new Webcaster.Model.Playlist({
-            formats: ["audio/aac", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm"],
             side: "left",
             files: [],
             fileIndex: -1,

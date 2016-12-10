@@ -78,14 +78,6 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
       animation: false
       placement: "left"
 
-    a = new Audio
-    formats = _.filter @model.get("formats"), (format) ->
-      canPlay = a.canPlayType format
-      canPlay == "probably" || canPlay == "maybe"
-
-    @model.set formats: formats
-    @$("input.files").attr "accept", formats.join(",")
-
     files = @model.get "files"
 
     @$(".files-table").empty()

@@ -45,9 +45,6 @@ $ ->
 
       playlistLeft : new Webcaster.View.Playlist
         model : new Webcaster.Model.Playlist({
-          formats     :
-            ["audio/aac", "audio/mp4", "audio/mpeg",
-             "audio/ogg", "audio/wav", "audio/webm"]
           side        : "left"
           files       : []
           fileIndex   : -1

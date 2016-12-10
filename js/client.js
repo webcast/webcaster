@@ -857,7 +857,7 @@
           return _this.$(".volume-right").width("0%");
         };
       })(this));
-      this.model.on("change:position", (function(_this) {
+      return this.model.on("change:position", (function(_this) {
         return function() {
           var duration, position;
           if (!(duration = _this.model.get("duration"))) {
@@ -868,15 +868,10 @@
           return _this.$(".track-position-text").text((Webcaster.prettifyTime(position)) + " / " + (Webcaster.prettifyTime(duration)));
         };
       })(this));
-      if ((new Audio).canPlayType("audio/mpeg") === "") {
-        return this.model.set({
-          mad: true
-        });
-      }
     };
 
     Playlist.prototype.render = function() {
-      var files;
+      var a, files, formats;
       this.$(".volume-slider").slider({
         orientation: "vertical",
         min: 0,
@@ -906,6 +901,16 @@
         animation: false,
         placement: "left"
       });
+      a = new Audio;
+      formats = _.filter(this.model.get("formats"), function(format) {
+        var canPlay;
+        canPlay = a.canPlayType(format);
+        return canPlay === "probably" || canPlay === "maybe";
+      });
+      this.model.set({
+        formats: formats
+      });
+      this.$("input.files").attr("accept", formats.join(","));
       files = this.model.get("files");
       this.$(".files-table").empty();
       if (!(files.length > 0)) {
@@ -1158,9 +1163,8 @@
       samplerates: [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000],
       channels: 2,
       encoder: "mp3",
-      asynchronous: false,
-      passThrough: false,
-      mad: false
+      asynchronous: true,
+      passThrough: false
     }, {
       mixer: Webcaster.mixer
     });
@@ -1190,6 +1194,7 @@
         }),
         playlistLeft: new Webcaster.View.Playlist({
           model: new Webcaster.Model.Playlist({
+            formats: ["audio/aac", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm"],
             side: "left",
             files: [],
             fileIndex: -1,

@@ -60,9 +60,6 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
       @$(".track-position-text").
         text "#{Webcaster.prettifyTime(position)} / #{Webcaster.prettifyTime(duration)}"
 
-    if (new Audio).canPlayType("audio/mpeg") == ""
-      @model.set mad: true
-
   render: ->
     @$(".volume-slider").slider
       orientation: "vertical"
@@ -80,6 +77,14 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
       trigger: ""
       animation: false
       placement: "left"
+
+    a = new Audio
+    formats = _.filter @model.get("formats"), (format) ->
+      canPlay = a.canPlayType format
+      canPlay == "probably" || canPlay == "maybe"
+
+    @model.set formats: formats
+    @$("input.files").attr "accept", formats.join(",")
 
     files = @model.get "files"
 

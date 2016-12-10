@@ -13,9 +13,8 @@ $ ->
                     22050, 24000, 32000, 44100, 48000 ]
     channels:     2
     encoder:      "mp3"
-    asynchronous: false
+    asynchronous: true
     passThrough:  false
-    mad:          false
   }, {
     mixer: Webcaster.mixer
   })
@@ -46,6 +45,9 @@ $ ->
 
       playlistLeft : new Webcaster.View.Playlist
         model : new Webcaster.Model.Playlist({
+          formats     :
+            ["audio/aac", "audio/mp4", "audio/mpeg",
+             "audio/ogg", "audio/wav", "audio/webm"]
           side        : "left"
           files       : []
           fileIndex   : -1

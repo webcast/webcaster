@@ -1,6 +1,15 @@
 class Webcaster.Model.Mixer extends Backbone.Model
+  getVolume: (position) ->
+    if position < 0.5
+      return 2*position
+
+    1
+
+  getSlider: ->
+    parseFloat(@get("slider"))/100.00
+
   getLeftVolume: ->
-    1.0 - @getRightVolume()
+    @getVolume(1.0 - @getSlider())
     
   getRightVolume: ->
-    parseFloat(@get("slider"))/100.00
+    @getVolume @getSlider()

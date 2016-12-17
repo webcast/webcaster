@@ -423,12 +423,23 @@
       return Mixer.__super__.constructor.apply(this, arguments);
     }
 
+    Mixer.prototype.getVolume = function(position) {
+      if (position < 0.5) {
+        return 2 * position;
+      }
+      return 1;
+    };
+
+    Mixer.prototype.getSlider = function() {
+      return parseFloat(this.get("slider")) / 100.00;
+    };
+
     Mixer.prototype.getLeftVolume = function() {
-      return 1.0 - this.getRightVolume();
+      return this.getVolume(1.0 - this.getSlider());
     };
 
     Mixer.prototype.getRightVolume = function() {
-      return parseFloat(this.get("slider")) / 100.00;
+      return this.getVolume(this.getSlider());
     };
 
     return Mixer;

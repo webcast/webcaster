@@ -37,47 +37,71 @@
                     <button class="btn btn-info passThrough">CUE</button>
                   </div>
                 </div>
-                <div class="control-group">
-                  <label>Encoder</label>
-                  <div class="controls">
-                    <label class="radio inline">
-                      <input type="radio" name="encoder" value="mp3" class="encoder" checked>MP3
-                    </label>
-                    <label class="radio inline">
-                      <input type="radio" name="encoder" value="raw" class="encoder">Raw
-                    </label>
+                <ul class="nav nav-tabs">
+                  <li class="active">
+                    <a href="#settings" data-toggle="tab">Settings</a>
+                  </li>
+                  <li>
+                    <a href="#metadata" data-toggle="tab">Metadata</a>
+                  </li>
+                </ul>
+                <div class="tab-content">
+                  <div class="tab-pane active" id="settings">
+                    <div class="control-group">
+                      <label>Encoder</label>
+                      <div class="controls">
+                        <label class="radio inline">
+                          <input type="radio" name="encoder" value="mp3" class="encoder" checked>MP3
+                        </label>
+                        <label class="radio inline">
+                          <input type="radio" name="encoder" value="raw" class="encoder">Raw
+                        </label>
+                      </div>
+                    </div>
+                    <div class="control-group">
+                      <label>Samplerate</label>
+                      <div class="controls">
+                        <select class="samplerate"></select>
+                      </div>
+                      <label>Bitrate</label>
+                      <div class="controls">
+                        <select class="bitrate"></select>
+                      </div>
+                      <label>Channels</label>
+                      <div class="controls">
+                        <label class="radio inline">
+                          <input type="radio" name="channels" value="2" class="channels" checked>Stereo
+                        </label>
+                        <label class="radio inline">
+                          <input type="radio" name="channels" value="1" class="channels">Mono
+                        </label>
+                      </div>
+                    </div>
+                    <div class="control-group">
+                      <label>Stream destination URI</label>
+                      <div class="controls">
+                        <input class="uri" type="text" size="40" value="ws://source:hackme@localhost:8080/mount">
+                        <label class="checkbox">
+                          <input type="checkbox" class="asynchronous" checked> Use asynchronous worker
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div class="control-group">
-                  <label>Samplerate</label>
-                  <div class="controls">
-                    <select class="samplerate"></select>
-                  </div>
-                  <label>Bitrate</label>
-                  <div class="controls">
-                    <select class="bitrate"></select>
-                  </div>
-                  <label>Channels</label>
-                  <div class="controls">
-                    <label class="radio inline">
-                      <input type="radio" name="channels" value="2" class="channels" checked>Stereo
-                    </label>
-                    <label class="radio inline">
-                      <input type="radio" name="channels" value="1" class="channels">Mono
-                    </label>
-                  </div>
-                </div>
-                <div class="control-group">
-                  <label>Stream destination URI</label>
-                  <div class="controls">
-                    <input class="uri" type="text" size="40" value="ws://source:hackme@localhost:8080/mount">
-                  </div>
-                </div>
-                <div class="control-group">
-                  <div class="controls">
-                    <label class="checkbox">
-                      <input type="checkbox" class="asynchronous" checked> Use asynchronous worker
-                    </label>
+                  <div class="tab-pane" id="metadata">
+                    <div class="alert metadata-updated" style="display: none;">
+                      Metadata updated!
+                    </div>
+                    <div class="control-group">
+                      <div class="controls">
+                        <label>Title:</label>
+                        <input class="manual-metadata title" type="text" disabled/>
+                        <label>Artist:</label>
+                        <input class="manual-metadata artist" type="text" disabled/>
+                      </div>
+                      <div class="controls">
+                        <button class="btn btn-primary update-metadata" disabled>Update Metadata</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </fieldset>

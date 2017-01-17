@@ -1,16 +1,17 @@
 class Webcaster.View.Settings extends Backbone.View
   events:
-    "change .uri"           : "onUri"
-    "change input.encoder"  : "onEncoder"
-    "change input.channels" : "onChannels"
-    "change .samplerate"    : "onSamplerate"
-    "change .bitrate"       : "onBitrate"
-    "change .mono"          : "onMono"
-    "change .asynchronous"  : "onAsynchronous"
-    "click .passThrough"    : "onPassThrough"
-    "click .start-stream"   : "onStart"
-    "click .stop-stream"    : "onStop"
-    "submit"                : "onSubmit"
+    "change .uri"            : "onUri"
+    "change input.encoder"   : "onEncoder"
+    "change input.channels"  : "onChannels"
+    "change .samplerate"     : "onSamplerate"
+    "change .bitrate"        : "onBitrate"
+    "change .mono"           : "onMono"
+    "change .asynchronous"   : "onAsynchronous"
+    "click .passThrough"     : "onPassThrough"
+    "click .start-stream"    : "onStart"
+    "click .stop-stream"     : "onStop"
+    "click .update-metadata" : "onMetadataUpdate"
+    "submit"                 : "onSubmit"
 
   initialize: ({@node}) ->
     @model.on "change:passThrough", =>
@@ -65,6 +66,7 @@ class Webcaster.View.Settings extends Backbone.View
     @$(".stop-stream").show()
     @$(".start-stream").hide()
     @$("input, select").attr disabled: "disabled"
+    @$(".manual-metadata, .update-metadata").removeAttr "disabled"
 
     @node.startStream()
 
@@ -74,8 +76,27 @@ class Webcaster.View.Settings extends Backbone.View
     @$(".stop-stream").hide()
     @$(".start-stream").show()
     @$("input, select").removeAttr "disabled"
+    @$(".manual-metadata, .update-metadata").attr disabled: "disabled"
 
     @node.stopStream()
+
+  onMetadataUpdate: (e) ->
+    e.preventDefault()
+
+    title = @$(".manual-metadata.artist").val()
+    artist = @$(".manual-metadata.title").val()
+
+    return unless artist != "" || title != ""
+
+    @node.sendMetadata
+      artist: artist
+      title:  title
+
+    @$(".metadata-updated").show 400, =>
+     cb = =>
+       @$(".metadata-updated").hide 400
+
+     setTimeout cb, 2000
 
   onSubmit: (e) ->
     e.preventDefault()

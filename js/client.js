@@ -1046,6 +1046,7 @@
       "click .passThrough": "onPassThrough",
       "click .start-stream": "onStart",
       "click .stop-stream": "onStop",
+      "click .update-metadata": "onMetadataUpdate",
       "submit": "onSubmit"
     };
 
@@ -1133,6 +1134,7 @@
       this.$("input, select").attr({
         disabled: "disabled"
       });
+      this.$(".manual-metadata, .update-metadata").removeAttr("disabled");
       return this.node.startStream();
     };
 
@@ -1141,7 +1143,33 @@
       this.$(".stop-stream").hide();
       this.$(".start-stream").show();
       this.$("input, select").removeAttr("disabled");
+      this.$(".manual-metadata, .update-metadata").attr({
+        disabled: "disabled"
+      });
       return this.node.stopStream();
+    };
+
+    Settings.prototype.onMetadataUpdate = function(e) {
+      var artist, title;
+      e.preventDefault();
+      title = this.$(".manual-metadata.artist").val();
+      artist = this.$(".manual-metadata.title").val();
+      if (!(artist !== "" || title !== "")) {
+        return;
+      }
+      this.node.sendMetadata({
+        artist: artist,
+        title: title
+      });
+      return this.$(".metadata-updated").show(400, (function(_this) {
+        return function() {
+          var cb;
+          cb = function() {
+            return _this.$(".metadata-updated").hide(400);
+          };
+          return setTimeout(cb, 2000);
+        };
+      })(this));
     };
 
     Settings.prototype.onSubmit = function(e) {

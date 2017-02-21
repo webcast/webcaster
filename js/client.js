@@ -61,16 +61,42 @@
         this.context = new AudioContext;
       }
       this.webcast = this.context.createWebcastSource(4096, this.defaultChannels);
+      this.connect();
       this.model.on("change:passThrough", (function(_this) {
         return function() {
           return _this.webcast.setPassThrough(_this.model.get("passThrough"));
         };
       })(this));
+      this.model.on("change:channels", (function(_this) {
+        return function() {
+          return _this.reconnect();
+        };
+      })(this));
     }
 
+    Node.prototype.connect = function() {
+      if (this.model.get("channels") === 1) {
+        this.merger || (this.merger = this.context.createChannelMerger(this.defaultChannels));
+        this.merger.connect(this.context.destination);
+        return this.webcast.connect(this.merger);
+      } else {
+        return this.webcast.connect(this.context.destination);
+      }
+    };
+
+    Node.prototype.disconnect = function() {
+      var ref;
+      this.webcast.disconnect();
+      return (ref = this.merger) != null ? ref.disconnect() : void 0;
+    };
+
+    Node.prototype.reconnect = function() {
+      this.disconnect();
+      return this.connect();
+    };
+
     Node.prototype.startStream = function() {
-      var channels, encoder, merger;
-      channels = this.model.get("channels");
+      var encoder;
       switch (this.model.get("encoder")) {
         case "mp3":
           encoder = Webcast.Encoder.Mp3;
@@ -79,7 +105,7 @@
           encoder = Webcast.Encoder.Raw;
       }
       this.encoder = new encoder({
-        channels: channels,
+        channels: this.model.get("channels"),
         samplerate: this.model.get("samplerate"),
         bitrate: this.model.get("bitrate")
       });
@@ -96,19 +122,11 @@
           scripts: ["https://cdn.rawgit.com/webcast/libsamplerate.js/master/dist/libsamplerate.js", "https://cdn.rawgit.com/savonet/shine/master/js/dist/libshine.js", "https://cdn.rawgit.com/webcast/webcast.js/master/lib/webcast.js"]
         });
       }
-      if (channels === 1) {
-        merger = this.context.createChannelMerger(this.defaultChannels);
-        merger.connect(this.context.destination);
-        this.webcast.connect(merger);
-      } else {
-        this.webcast.connect(this.context.destination);
-      }
       return this.webcast.connectSocket(this.encoder, this.model.get("uri"));
     };
 
     Node.prototype.stopStream = function() {
-      this.webcast.close();
-      return this.webcast.disconnect();
+      return this.webcast.close();
     };
 
     Node.prototype.createAudioSource = function(arg, model, cb) {

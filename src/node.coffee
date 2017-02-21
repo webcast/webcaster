@@ -10,13 +10,32 @@ class Webcaster.Node
       @context = new AudioContext
 
     @webcast = @context.createWebcastSource 4096, @defaultChannels
- 
+
+    @connect()
+
     @model.on "change:passThrough", =>
       @webcast.setPassThrough @model.get("passThrough")
 
-  startStream: ->
-    channels = @model.get "channels"
+    @model.on "change:channels", =>
+      @reconnect()
 
+  connect: ->
+    if @model.get("channels") == 1
+      @merger ||= @context.createChannelMerger @defaultChannels
+      @merger.connect @context.destination
+      @webcast.connect @merger
+    else
+      @webcast.connect @context.destination   
+
+  disconnect: ->
+    @webcast.disconnect()
+    @merger?.disconnect()
+
+  reconnect: ->
+    @disconnect()
+    @connect()
+
+  startStream: ->
     switch @model.get("encoder")
       when "mp3"
         encoder = Webcast.Encoder.Mp3
@@ -24,7 +43,7 @@ class Webcaster.Node
         encoder = Webcast.Encoder.Raw
 
     @encoder = new encoder
-      channels   : channels
+      channels   : @model.get("channels")
       samplerate : @model.get("samplerate")
       bitrate    : @model.get("bitrate")
 
@@ -43,18 +62,10 @@ class Webcaster.Node
           "https://cdn.rawgit.com/webcast/webcast.js/master/lib/webcast.js"
         ]
 
-    if channels == 1
-      merger = @context.createChannelMerger @defaultChannels
-      merger.connect @context.destination
-      @webcast.connect merger
-    else
-      @webcast.connect @context.destination
-
     @webcast.connectSocket @encoder, @model.get("uri")
 
   stopStream: ->
     @webcast.close()
-    @webcast.disconnect()
 
   createAudioSource: ({file, audio}, model, cb) ->
     el = new Audio URL.createObjectURL(file)

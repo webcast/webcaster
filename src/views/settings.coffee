@@ -5,7 +5,6 @@ class Webcaster.View.Settings extends Backbone.View
     "change input.channels"  : "onChannels"
     "change .samplerate"     : "onSamplerate"
     "change .bitrate"        : "onBitrate"
-    "change .mono"           : "onMono"
     "change .asynchronous"   : "onAsynchronous"
     "click .passThrough"     : "onPassThrough"
     "click .start-stream"    : "onStart"

@@ -1,19 +1,22 @@
 class Webcaster.Node
   _.extend @prototype, Backbone.Events
 
+  defaultChannels = 2
+
   constructor: ({@model}) ->
     if typeof webkitAudioContext != "undefined"
       @context = new webkitAudioContext
     else
       @context = new AudioContext
 
-    @webcast = @context.createWebcastSource 4096, 2
-    @webcast.connect @context.destination
+    @webcast = @context.createWebcastSource 4096, @defaultChannels
  
     @model.on "change:passThrough", =>
       @webcast.setPassThrough @model.get("passThrough")
 
   startStream: ->
+    channels = @model.get "channels"
+
     switch @model.get("encoder")
       when "mp3"
         encoder = Webcast.Encoder.Mp3
@@ -21,7 +24,7 @@ class Webcaster.Node
         encoder = Webcast.Encoder.Raw
 
     @encoder = new encoder
-      channels   : @model.get("channels")
+      channels   : channels
       samplerate : @model.get("samplerate")
       bitrate    : @model.get("bitrate")
 
@@ -40,10 +43,18 @@ class Webcaster.Node
           "https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"
         ]
 
+    if channels == 1
+      merger = @context.createChannelMerger @defaultChannels
+      merger.connect @context.destination
+      @webcast.connect merger
+    else
+      @webcast.connect @context.destination
+
     @webcast.connectSocket @encoder, @model.get("uri")
 
   stopStream: ->
     @webcast.close()
+    @webcast.disconnect()
 
   createAudioSource: ({file, audio}, model, cb) ->
     el = new Audio URL.createObjectURL(file)

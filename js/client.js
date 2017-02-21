@@ -47,7 +47,11 @@
   };
 
   Webcaster.Node = (function() {
+    var defaultChannels;
+
     _.extend(Node.prototype, Backbone.Events);
+
+    defaultChannels = 2;
 
     function Node(arg) {
       this.model = arg.model;
@@ -56,8 +60,7 @@
       } else {
         this.context = new AudioContext;
       }
-      this.webcast = this.context.createWebcastSource(4096, 2);
-      this.webcast.connect(this.context.destination);
+      this.webcast = this.context.createWebcastSource(4096, this.defaultChannels);
       this.model.on("change:passThrough", (function(_this) {
         return function() {
           return _this.webcast.setPassThrough(_this.model.get("passThrough"));
@@ -66,7 +69,8 @@
     }
 
     Node.prototype.startStream = function() {
-      var encoder;
+      var channels, encoder, merger;
+      channels = this.model.get("channels");
       switch (this.model.get("encoder")) {
         case "mp3":
           encoder = Webcast.Encoder.Mp3;
@@ -75,7 +79,7 @@
           encoder = Webcast.Encoder.Raw;
       }
       this.encoder = new encoder({
-        channels: this.model.get("channels"),
+        channels: channels,
         samplerate: this.model.get("samplerate"),
         bitrate: this.model.get("bitrate")
       });
@@ -92,11 +96,20 @@
           scripts: ["https://rawgithub.com/webcast/libsamplerate.js/master/dist/libsamplerate.js", "https://rawgithub.com/savonet/shine/master/js/dist/libshine.js", "https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"]
         });
       }
+      if (channels === 1) {
+        console.log("merging channels");
+        merger = this.context.createChannelMerger(this.defaultChannels);
+        merger.connect(this.context.destination);
+        this.webcast.connect(merger);
+      } else {
+        this.webcast.connect(this.context.destination);
+      }
       return this.webcast.connectSocket(this.encoder, this.model.get("uri"));
     };
 
     Node.prototype.stopStream = function() {
-      return this.webcast.close();
+      this.webcast.close();
+      return this.webcast.disconnect();
     };
 
     Node.prototype.createAudioSource = function(arg, model, cb) {
@@ -1041,7 +1054,6 @@
       "change input.channels": "onChannels",
       "change .samplerate": "onSamplerate",
       "change .bitrate": "onBitrate",
-      "change .mono": "onMono",
       "change .asynchronous": "onAsynchronous",
       "click .passThrough": "onPassThrough",
       "click .start-stream": "onStart",

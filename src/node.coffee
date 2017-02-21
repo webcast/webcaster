@@ -38,9 +38,9 @@ class Webcaster.Node
       @encoder = new Webcast.Encoder.Asynchronous
         encoder : @encoder
         scripts: [
-          "https://rawgithub.com/webcast/libsamplerate.js/master/dist/libsamplerate.js",
-          "https://rawgithub.com/savonet/shine/master/js/dist/libshine.js",
-          "https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"
+          "https://cdn.rawgit.com/webcast/libsamplerate.js/master/dist/libsamplerate.js",
+          "https://cdn.rawgit.com/savonet/shine/master/js/dist/libshine.js",
+          "https://cdn.rawgit.com/webcast/webcast.js/master/lib/webcast.js"
         ]
 
     if channels == 1

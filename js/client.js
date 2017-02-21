@@ -93,11 +93,10 @@
       if (this.model.get("asynchronous")) {
         this.encoder = new Webcast.Encoder.Asynchronous({
           encoder: this.encoder,
-          scripts: ["https://rawgithub.com/webcast/libsamplerate.js/master/dist/libsamplerate.js", "https://rawgithub.com/savonet/shine/master/js/dist/libshine.js", "https://rawgithub.com/webcast/webcast.js/master/lib/webcast.js"]
+          scripts: ["https://cdn.rawgit.com/webcast/libsamplerate.js/master/dist/libsamplerate.js", "https://cdn.rawgit.com/savonet/shine/master/js/dist/libshine.js", "https://cdn.rawgit.com/webcast/webcast.js/master/lib/webcast.js"]
         });
       }
       if (channels === 1) {
-        console.log("merging channels");
         merger = this.context.createChannelMerger(this.defaultChannels);
         merger.connect(this.context.destination);
         this.webcast.connect(merger);

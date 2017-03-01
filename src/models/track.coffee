@@ -60,7 +60,7 @@ class Webcaster.Model.Track extends Backbone.Model
     source
 
   createPassThrough: ->
-    source = @node.context.createScriptProcessor 8192, 2, 2
+    source = @node.context.createScriptProcessor 256, 2, 2
 
     source.onaudioprocess = (buf) =>
       channelData = buf.inputBuffer.getChannelData channel
@@ -90,6 +90,7 @@ class Webcaster.Model.Track extends Backbone.Model
     @passThrough = @createPassThrough()
     @passThrough.connect @node.context.destination
     @destination.connect @passThrough
+
 
   togglePause: ->
     return unless @source?.pause?

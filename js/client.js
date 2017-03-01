@@ -296,7 +296,7 @@
 
     Track.prototype.createPassThrough = function() {
       var source;
-      source = this.node.context.createScriptProcessor(8192, 2, 2);
+      source = this.node.context.createScriptProcessor(256, 2, 2);
       source.onaudioprocess = (function(_this) {
         return function(buf) {
           var channel, channelData, j, ref, results;

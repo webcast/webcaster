@@ -16,3 +16,6 @@ init:
 
 run:
 	python -m SimpleHTTPServer
+
+srun:
+	python ./https/run.py

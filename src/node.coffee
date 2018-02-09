@@ -9,7 +9,7 @@ class Webcaster.Node
     else
       @context = new AudioContext
 
-    @webcast = @context.createWebcastSource 4096, @defaultChannels
+    @webcast = @context.createWebcastSource 4096, defaultChannels
 
     @connect()
 

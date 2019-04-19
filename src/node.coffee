@@ -36,6 +36,8 @@ class Webcaster.Node
     @connect()
 
   startStream: ->
+    @context.resume()
+
     switch @model.get("encoder")
       when "mp3"
         encoder = Webcast.Encoder.Mp3

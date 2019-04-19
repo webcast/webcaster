@@ -97,6 +97,7 @@
 
     Node.prototype.startStream = function() {
       var encoder;
+      this.context.resume();
       switch (this.model.get("encoder")) {
         case "mp3":
           encoder = Webcast.Encoder.Mp3;

@@ -66,6 +66,16 @@
             channelData = buf.inputBuffer.getChannelData(channel);
             results = [];
             for (channel = j = 0, ref = buf.inputBuffer.numberOfChannels - 1; (0 <= ref ? j <= ref : j >= ref); channel = 0 <= ref ? ++j : --j) {
+              results.push(buf.outputBuffer.getChannelData(channel).set(channelData));
+            }
+            return results;
+          };
+          this.playThrough = this.context.createScriptProcessor(256, 2, 2);
+          this.playThrough.onaudioprocess = (buf) => {
+            var channel, channelData, j, ref, results;
+            channelData = buf.inputBuffer.getChannelData(channel);
+            results = [];
+            for (channel = j = 0, ref = buf.inputBuffer.numberOfChannels - 1; (0 <= ref ? j <= ref : j >= ref); channel = 0 <= ref ? ++j : --j) {
               if (this.model.get("passThrough")) {
                 results.push(buf.outputBuffer.getChannelData(channel).set(channelData));
               } else {
@@ -74,35 +84,54 @@
             }
             return results;
           };
-          this.sink.connect(this.context.destination);
-          this.destination = this.context.createMediaStreamDestination();
-          return this.destination.channelCount = channels;
+          this.sink.connect(this.playThrough);
+          this.playThrough.connect(this.context.destination);
+          this.streamNode = this.context.createMediaStreamDestination();
+          this.streamNode.channelCount = channels;
+          return this.sink.connect(this.streamNode);
         };
         setContext();
         this.model.on("change:samplerate", setContext);
         this.model.on("change:channels", setContext);
       }
 
+      registerSource() {
+        return this.model.set("playing", this.model.get("playing") + 1);
+      }
+
+      unregisterSource() {
+        return this.model.set("playing", Math.max(0, this.model.get("playing") - 1));
+      }
+
       startStream() {
-        var bitrate, mimeType, url;
+        var audioBitrate, mimeType, url, videoBitrate;
+        this.model.set("streaming", true);
         this.context.resume();
         mimeType = this.model.get("mimeType");
-        bitrate = Number(this.model.get("bitrate")) * 1000;
+        audioBitrate = Number(this.model.get("audioBitrate")) * 1000;
+        videoBitrate = Number(this.model.get("videoBitrate")) * 1000000;
         url = this.model.get("url");
-        this.mediaRecorder = new MediaRecorder(this.destination.stream, {
+        if (this.model.get("camera")) {
+          this.streamNode.stream.addTrack($(".camera-preview").get(0).captureStream().getTracks()[0]);
+        }
+        this.mediaRecorder = new MediaRecorder(this.streamNode.stream, {
           mimeType: mimeType,
-          audioBitsPerSecond: bitrate
+          audioBitsPerSecond: audioBitrate,
+          videoBitsPerSecond: videoBitrate
         });
         this.socket = new Webcast.Socket({
           mediaRecorder: this.mediaRecorder,
           url: url
         });
-        return this.mediaRecorder.start();
+        return this.mediaRecorder.start(1000);
       }
 
       stopStream() {
         var ref;
-        return (ref = this.mediaRecorder) != null ? ref.stop() : void 0;
+        if ((ref = this.mediaRecorder) != null) {
+          ref.stop();
+        }
+        return this.model.set("streaming", false);
       }
 
       createAudioSource({file, audio}, model, cb) {
@@ -197,8 +226,7 @@
         });
       });
       this.on("change:trackGain", this.setTrackGain);
-      this.on("ended", this.stop);
-      return this.sink = this.node.sink;
+      return this.on("ended", this.stop);
     }
 
     togglePassThrough() {
@@ -285,9 +313,14 @@
       return this.trackGain.gain.value = parseFloat(this.get("trackGain")) / 100.0;
     }
 
+    sink() {
+      return this.node.sink;
+    }
+
     prepare() {
+      this.node.registerSource();
       this.controlsNode = this.createControlsNode();
-      this.controlsNode.connect(this.sink);
+      this.controlsNode.connect(this.sink());
       this.trackGain = this.node.context.createGain();
       this.trackGain.connect(this.controlsNode);
       this.setTrackGain();
@@ -335,6 +368,7 @@
       this.set({
         position: 0.0
       });
+      this.node.unregisterSource();
       return this.trigger("stopped");
     }
 
@@ -356,20 +390,11 @@
 
   Webcaster.Model.Microphone = class Microphone extends Webcaster.Model.Track {
     initialize() {
-      super.initialize(...arguments);
-      return this.on("change:device", function() {
-        if (this.source == null) {
-          return;
-        }
-        return this.createSource();
-      });
+      return super.initialize(...arguments);
     }
 
     createSource(cb) {
       var constraints;
-      if (this.source != null) {
-        this.source.disconnect(this.destination);
-      }
       constraints = {
         video: false
       };
@@ -392,6 +417,14 @@
       return this.createSource(() => {
         return this.trigger("playing");
       });
+    }
+
+    stop() {
+      var ref1;
+      if ((ref1 = this.source) != null) {
+        ref1.disconnect();
+      }
+      return super.stop(...arguments);
     }
 
   };
@@ -426,12 +459,27 @@
 
     initialize() {
       super.initialize(...arguments);
-      this.mixer.on("change:slider", () => {
+      return this.mixer.on("change:slider", () => {
         return this.setMixGain();
       });
+    }
+
+    prepare() {
       this.mixGain = this.node.context.createGain();
       this.mixGain.connect(this.node.sink);
-      return this.sink = this.mixGain;
+      return super.prepare(...arguments);
+    }
+
+    stop() {
+      var ref2;
+      if ((ref2 = this.mixGain) != null) {
+        ref2.disconnect();
+      }
+      return super.stop(...arguments);
+    }
+
+    sink() {
+      return this.mixGain;
     }
 
     setMixGain() {
@@ -658,6 +706,12 @@
         return this;
       }
 
+      onAudioDevice(e) {
+        return this.model.set({
+          device: $(e.target).val()
+        });
+      }
+
       onRecord(e) {
         e.preventDefault();
         if (this.model.isPlaying()) {
@@ -674,10 +728,63 @@
     Microphone.prototype.events = {
       "click .record-audio": "onRecord",
       "click .passThrough": "onPassThrough",
+      "change .audio-device": "onAudioDevice",
       "submit": "onSubmit"
     };
 
     return Microphone;
+
+  }).call(this);
+
+  Webcaster.View.Camera = (function() {
+    class Camera extends Backbone.View {
+      initialize() {
+        super.initialize(...arguments);
+        return this.model.on("change:camera", () => {
+          var ref2;
+          if (this.model.get("camera")) {
+            return navigator.mediaDevices.getUserMedia({
+              audio: false,
+              video: true
+            }).then((stream) => {
+              var ref2;
+              this.$(".camera-preview").get(0).srcObject = stream;
+              this.$(".camera-preview").get(0).play();
+              this.model.set("mimeType", (ref2 = this.model.get("videoMimeTypes")[0]) != null ? ref2.value : void 0);
+              return this.model.set("mimeTypes", this.model.get("videoMimeTypes"));
+            });
+          } else {
+            this.$(".camera-preview").get(0).srcObject = null;
+            this.model.set("mimeType", (ref2 = this.model.get("audioMimeTypes")[0]) != null ? ref2.value : void 0);
+            return this.model.set("mimeTypes", this.model.get("audioMimeTypes"));
+          }
+        });
+      }
+
+      render() {
+        navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: true
+        }).then(() => {
+          return this.$(".camera-settings").show();
+        });
+        return this;
+      }
+
+      onEnableCamera(e) {
+        e.preventDefault();
+        return this.model.set({
+          camera: $(e.target).is(":checked")
+        });
+      }
+
+    };
+
+    Camera.prototype.events = {
+      "change .enable-camera": "onEnableCamera"
+    };
+
+    return Camera;
 
   }).call(this);
 
@@ -918,17 +1025,85 @@
     class Settings extends Backbone.View {
       initialize({node}) {
         this.node = node;
-        return this.model.on("change:passThrough", () => {
+        this.model.on("change:mimeTypes", () => {
+          return this.setFormats();
+        });
+        this.model.on("change:passThrough", () => {
           if (this.model.get("passThrough")) {
             return this.$(".passThrough").addClass("btn-cued").removeClass("btn-info");
           } else {
             return this.$(".passThrough").addClass("btn-info").removeClass("btn-cued");
           }
         });
+        this.model.on("change:playing", () => {
+          if (this.model.get("playing") > 0) {
+            return this.setPlaying();
+          } else {
+            return this.setNotPlaying();
+          }
+        });
+        this.model.on("change:streaming", () => {
+          if (this.model.get("streaming")) {
+            return this.setStreaming();
+          } else {
+            return this.setNotStreaming();
+          }
+        });
+        return this.model.on("change:camera", () => {
+          if (this.model.get("camera")) {
+            return this.$(".video-settings").show();
+          } else {
+            return this.$(".video-settings").hide();
+          }
+        });
+      }
+
+      setPlaying() {
+        return this.$(".samplerate, .channels").attr({
+          disabled: "disabled"
+        });
+      }
+
+      setNotPlaying() {
+        return this.$(".samplerate, .channels").removeAttr("disabled");
+      }
+
+      setStreaming() {
+        this.setPlaying();
+        this.$(".stop-stream").show();
+        this.$(".start-stream").hide();
+        this.$(".mimeType, .audio-bitrate, .video-bitrate, .url").attr({
+          disabled: "disabled"
+        });
+        return this.$(".manual-metadata, .update-metadata").removeAttr("disabled");
+      }
+
+      setNotStreaming() {
+        if (!this.model.get("playing")) {
+          this.setNotPlaying();
+        }
+        this.$(".stop-stream").hide();
+        this.$(".start-stream").show();
+        this.$(".mimeType, .audio-bitrate, .video-bitrate, .url").removeAttr("disabled");
+        return this.$(".manual-metadata, .update-metadata").attr({
+          disabled: "disabled"
+        });
+      }
+
+      setFormats() {
+        var mimeType;
+        mimeType = this.model.get("mimeType");
+        this.$(".mimeType").empty();
+        return _.each(this.model.get("mimeTypes"), ({name, value}) => {
+          var selected;
+          selected = mimeType === value ? "selected" : "";
+          return $(`<option value='${value}' ${selected}>${name}</option>`).appendTo(this.$(".mimeType"));
+        });
       }
 
       render() {
-        var bitrate, samplerate;
+        var audioBitrate, samplerate, videoBitrate;
+        this.setFormats();
         samplerate = this.model.get("samplerate");
         this.$(".samplerate").empty();
         _.each(this.model.get("samplerates"), (rate) => {
@@ -936,12 +1111,19 @@
           selected = samplerate === rate ? "selected" : "";
           return $(`<option value='${rate}' ${selected}>${rate}</option>`).appendTo(this.$(".samplerate"));
         });
-        bitrate = this.model.get("bitrate");
-        this.$(".bitrate").empty();
-        _.each(this.model.get("bitrates"), (rate) => {
+        audioBitrate = this.model.get("audioBitrate");
+        this.$(".audio-bitrate").empty();
+        _.each(this.model.get("audioBitrates"), (rate) => {
           var selected;
-          selected = bitrate === rate ? "selected" : "";
-          return $(`<option value='${rate}' ${selected}>${rate}</option>`).appendTo(this.$(".bitrate"));
+          selected = audioBitrate === rate ? "selected" : "";
+          return $(`<option value='${rate}' ${selected}>${rate}</option>`).appendTo(this.$(".audio-bitrate"));
+        });
+        videoBitrate = this.model.get("videoBitrate");
+        this.$(".video-bitrate").empty();
+        _.each(this.model.get("videoBitrates"), (rate) => {
+          var selected;
+          selected = videoBitrate === rate ? "selected" : "";
+          return $(`<option value='${rate}' ${selected}>${rate}</option>`).appendTo(this.$(".video-bitrate"));
         });
         return this;
       }
@@ -964,15 +1146,27 @@
         });
       }
 
+      onMimeType(e) {
+        return this.model.set({
+          mimeType: $(e.target).val()
+        });
+      }
+
       onSamplerate(e) {
         return this.model.set({
           samplerate: parseInt($(e.target).val())
         });
       }
 
-      onBitrate(e) {
+      onAudioBitrate(e) {
         return this.model.set({
-          bitrate: parseInt($(e.target).val())
+          audioBitrate: parseInt($(e.target).val())
+        });
+      }
+
+      onVideoBitrate(e) {
+        return this.model.set({
+          videoBitrate: parseInt($(e.target).val())
         });
       }
 
@@ -989,23 +1183,11 @@
 
       onStart(e) {
         e.preventDefault();
-        this.$(".stop-stream").show();
-        this.$(".start-stream").hide();
-        this.$("input, select").attr({
-          disabled: "disabled"
-        });
-        this.$(".manual-metadata, .update-metadata").removeAttr("disabled");
         return this.node.startStream();
       }
 
       onStop(e) {
         e.preventDefault();
-        this.$(".stop-stream").hide();
-        this.$(".start-stream").show();
-        this.$("input, select").removeAttr("disabled");
-        this.$(".manual-metadata, .update-metadata").attr({
-          disabled: "disabled"
-        });
         return this.node.stopStream();
       }
 
@@ -1040,8 +1222,10 @@
       "change .url": "onUrl",
       "change input.encoder": "onEncoder",
       "change input.channels": "onChannels",
+      "change .mimeType": "onMimeType",
       "change .samplerate": "onSamplerate",
-      "change .bitrate": "onBitrate",
+      "change .audio-bitrate": "onAudioBitrate",
+      "change .video-bitrate": "onVideoBitrate",
       "change .asynchronous": "onAsynchronous",
       "click .passThrough": "onPassThrough",
       "click .start-stream": "onStart",
@@ -1055,18 +1239,52 @@
   }).call(this);
 
   $(function() {
+    var audioMimeTypes, enabledMimeTypes, ref2, videoMimeTypes;
     Webcaster.mixer = new Webcaster.Model.Mixer({
       slider: 0
     });
+    enabledMimeTypes = (types) => {
+      return _.filter(types, ({value}) => {
+        return MediaRecorder.isTypeSupported(value);
+      });
+    };
+    audioMimeTypes = enabledMimeTypes([
+      {
+        name: "Opus audio",
+        value: "audio/webm;codecs=opus"
+      }
+    ]);
+    videoMimeTypes = enabledMimeTypes([
+      {
+        name: "Opus audio/h264 video",
+        value: "video/webm;codecs=h264,opus"
+      },
+      {
+        name: "Opus audio/vp9 video",
+        value: "video/webm;codecs=vp9,opus"
+      },
+      {
+        name: "Opus audio/vp8 video",
+        value: "video/webm;codecs=vp8,opus"
+      }
+    ]);
     Webcaster.settings = new Webcaster.Model.Settings({
       url: "ws://source:hackme@localhost:8080/mount",
-      bitrate: 128,
-      bitrates: [8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320],
+      audioBitrate: 128,
+      audioBitrates: [8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320],
+      videoBitrate: 2.5,
+      videoBitrates: [2.5, 3.5, 5, 7, 10],
       samplerate: 44100,
       samplerates: [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000],
       channels: 2,
-      mimeType: "audio/webm",
-      passThrough: false
+      mimeTypes: audioMimeTypes,
+      audioMimeTypes: audioMimeTypes,
+      videoMimeTypes: videoMimeTypes,
+      mimeType: (ref2 = audioMimeTypes[0]) != null ? ref2.value : void 0,
+      passThrough: false,
+      camera: false,
+      streaming: false,
+      playing: 0
     }, {
       mixer: Webcaster.mixer
     });
@@ -1093,6 +1311,10 @@
             node: Webcaster.node
           }),
           el: $("div.microphone")
+        }),
+        camera: new Webcaster.View.Camera({
+          model: Webcaster.settings,
+          el: $("div.camera")
         }),
         playlistLeft: new Webcaster.View.Playlist({
           model: new Webcaster.Model.Playlist({

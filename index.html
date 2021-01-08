@@ -25,9 +25,23 @@
       <div class="row-fluid">
         <div class="span3 settings">
           <div class="well sidebar-nav">
+            <div class="camera">
+              <video class="camera-preview" style="height: 100%; width: 100%;"></video>
+              <form class="camera-settings" style="display: none;">
+                <fieldset>
+                  <div class="control-group">
+                    <div class="controls">
+                      <label class="checkbox">
+                        <input type="checkbox" name="enable-camera" value="2" class="enable-camera">
+                        Enable camera
+                      </label>
+                    </div>
+                  </div>
+                </fieldset>
+              </form>
+            </div>
             <form>
               <fieldset>
-                <legend>Setup</legend>
                 <div class="control-group">
                   <div class="controls">
                     <button class="btn btn-primary start-stream">Start streaming</button>
@@ -48,17 +62,23 @@
                     <div class="control-group">
                       <label>Format</label>
                       <div class="controls">
-                        <input class="mimeType" type="text" size="40" value="audio/webm">
+                        <select class="mimeType"></select>
                       </div>
                     </div>
                     <div class="control-group">
+                      <div class="video-settings" style="display: none;">
+                        <label>Video Bitrate (MB/s)</label>
+                        <div class="controls">
+                          <select class="video-bitrate"></select>
+                        </div>
+                      </div>
                       <label>Samplerate</label>
                       <div class="controls">
                         <select class="samplerate"></select>
                       </div>
-                      <label>Bitrate</label>
+                      <label>Audio Bitrate (kB/s)</label>
                       <div class="controls">
-                        <select class="bitrate"></select>
+                        <select class="audio-bitrate"></select>
                       </div>
                       <label>Channels</label>
                       <div class="controls">
@@ -186,7 +206,7 @@
                 <div class="control-group microphone-entry" align="center" style="display: none;">
                   <label>Microphone source</label>
                   <div class="controls">
-                    <select></select>
+                    <select class="audio-device"></select>
                   </div>
                 </div>
               </fieldset>

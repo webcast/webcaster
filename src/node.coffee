@@ -11,8 +11,15 @@ class Webcaster.Node
       )
 
       @sink = @context.createScriptProcessor 256, 2, 2
-
       @sink.onaudioprocess = (buf) =>
+        channelData = buf.inputBuffer.getChannelData channel
+
+        for channel in [0..buf.inputBuffer.numberOfChannels-1]
+          buf.outputBuffer.getChannelData(channel).set channelData    
+
+      @playThrough = @context.createScriptProcessor 256, 2, 2
+
+      @playThrough.onaudioprocess = (buf) =>
         channelData = buf.inputBuffer.getChannelData channel
 
         for channel in [0..buf.inputBuffer.numberOfChannels-1]
@@ -21,26 +28,42 @@ class Webcaster.Node
           else
             buf.outputBuffer.getChannelData(channel).set (new Float32Array channelData.length)
 
-      @sink.connect @context.destination
+      @sink.connect @playThrough
+      @playThrough.connect @context.destination
 
-      @destination = @context.createMediaStreamDestination()
-      @destination.channelCount = channels
+      @streamNode = @context.createMediaStreamDestination()
+      @streamNode.channelCount = channels
+
+      @sink.connect @streamNode
 
     setContext()
 
     @model.on "change:samplerate", setContext
     @model.on "change:channels", setContext
 
+  registerSource: ->
+    @model.set "playing", @model.get("playing") + 1
+
+  unregisterSource: ->
+    @model.set "playing", Math.max(0, @model.get("playing") - 1)
+
   startStream: =>
+    @model.set "streaming", true
+
     @context.resume()
 
     mimeType = @model.get("mimeType")
-    bitrate = Number(@model.get("bitrate"))*1000;
+    audioBitrate = Number(@model.get("audioBitrate"))*1000;
+    videoBitrate = Number(@model.get("videoBitrate"))*1000000;
     url = @model.get("url")
 
-    @mediaRecorder = new MediaRecorder(@destination.stream,
+    if @model.get("camera")
+      @streamNode.stream.addTrack $(".camera-preview").get(0).captureStream().getTracks()[0]
+
+    @mediaRecorder = new MediaRecorder(@streamNode.stream,
       mimeType: mimeType,
-      audioBitsPerSecond: bitrate
+      audioBitsPerSecond: audioBitrate
+      videoBitsPerSecond: videoBitrate
     );
 
     @socket = new Webcast.Socket(
@@ -48,10 +71,11 @@ class Webcaster.Node
       url: url
     )
 
-    @mediaRecorder.start()
+    @mediaRecorder.start(1000)
 
   stopStream: =>
     @mediaRecorder?.stop()
+    @model.set "streaming", false
 
   createAudioSource: ({file, audio}, model, cb) ->
     el = new Audio URL.createObjectURL(file)

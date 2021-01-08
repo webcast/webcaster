@@ -45,82 +45,64 @@
   };
 
   Webcaster.Node = (function() {
-    var defaultChannels;
-
     class Node {
       constructor({
           model: model1
         }) {
+        var setContext;
+        this.startStream = this.startStream.bind(this);
+        this.stopStream = this.stopStream.bind(this);
         this.model = model1;
-        if (typeof webkitAudioContext !== "undefined") {
-          this.context = new webkitAudioContext();
-        } else {
-          this.context = new AudioContext();
-        }
-        this.webcast = this.context.createWebcastSource(4096, defaultChannels);
-        this.connect();
-        this.model.on("change:passThrough", () => {
-          return this.webcast.setPassThrough(this.model.get("passThrough"));
-        });
-        this.model.on("change:channels", () => {
-          return this.reconnect();
-        });
-      }
-
-      connect() {
-        if (this.model.get("channels") === 1) {
-          this.merger || (this.merger = this.context.createChannelMerger(this.defaultChannels));
-          this.merger.connect(this.context.destination);
-          return this.webcast.connect(this.merger);
-        } else {
-          return this.webcast.connect(this.context.destination);
-        }
-      }
-
-      disconnect() {
-        var ref;
-        this.webcast.disconnect();
-        return (ref = this.merger) != null ? ref.disconnect() : void 0;
-      }
-
-      reconnect() {
-        this.disconnect();
-        return this.connect();
+        setContext = () => {
+          var channels, sampleRate;
+          sampleRate = this.model.get("samplerate");
+          channels = this.model.get("channels");
+          this.context = new AudioContext({
+            sampleRate: sampleRate
+          });
+          this.sink = this.context.createScriptProcessor(256, 2, 2);
+          this.sink.onaudioprocess = (buf) => {
+            var channel, channelData, j, ref, results;
+            channelData = buf.inputBuffer.getChannelData(channel);
+            results = [];
+            for (channel = j = 0, ref = buf.inputBuffer.numberOfChannels - 1; (0 <= ref ? j <= ref : j >= ref); channel = 0 <= ref ? ++j : --j) {
+              if (this.model.get("passThrough")) {
+                results.push(buf.outputBuffer.getChannelData(channel).set(channelData));
+              } else {
+                results.push(buf.outputBuffer.getChannelData(channel).set(new Float32Array(channelData.length)));
+              }
+            }
+            return results;
+          };
+          this.sink.connect(this.context.destination);
+          this.destination = this.context.createMediaStreamDestination();
+          return this.destination.channelCount = channels;
+        };
+        setContext();
+        this.model.on("change:samplerate", setContext);
+        this.model.on("change:channels", setContext);
       }
 
       startStream() {
-        var encoder;
+        var bitrate, mimeType, url;
         this.context.resume();
-        switch (this.model.get("encoder")) {
-          case "mp3":
-            encoder = Webcast.Encoder.Mp3;
-            break;
-          case "raw":
-            encoder = Webcast.Encoder.Raw;
-        }
-        this.encoder = new encoder({
-          channels: this.model.get("channels"),
-          samplerate: this.model.get("samplerate"),
-          bitrate: this.model.get("bitrate")
+        mimeType = this.model.get("mimeType");
+        bitrate = Number(this.model.get("bitrate")) * 1000;
+        url = this.model.get("url");
+        this.mediaRecorder = new MediaRecorder(this.destination.stream, {
+          mimeType: mimeType,
+          audioBitsPerSecond: bitrate
         });
-        if (this.model.get("samplerate") !== this.context.sampleRate) {
-          this.encoder = new Webcast.Encoder.Resample({
-            encoder: this.encoder,
-            type: Samplerate.LINEAR,
-            samplerate: this.context.sampleRate
-          });
-        }
-        if (this.model.get("asynchronous")) {
-          this.encoder = new Webcast.Encoder.Asynchronous({
-            encoder: this.encoder,
-            scripts: ["https://cdn.rawgit.com/webcast/libsamplerate.js/master/dist/libsamplerate.js", "https://cdn.rawgit.com/savonet/shine/master/js/dist/libshine.js", "https://cdn.rawgit.com/webcast/webcast.js/master/lib/webcast.js"]
-          });
-        }
-        return this.webcast.connectSocket(this.encoder, this.model.get("uri"));
+        this.socket = new Webcast.Socket({
+          mediaRecorder: this.mediaRecorder,
+          url: url
+        });
+        return this.mediaRecorder.start();
       }
 
       stopStream() {
-        return this.webcast.close();
+        var ref;
+        return (ref = this.mediaRecorder) != null ? ref.stop() : void 0;
       }
 
       createAudioSource({file, audio}, model, cb) {
@@ -188,18 +170,13 @@
       }
 
       sendMetadata(data) {
-        return this.webcast.sendMetadata(data);
-      }
-
-      close(cb) {
-        return this.webcast.close(cb);
+        var ref;
+        return (ref = this.socket) != null ? ref.sendMetadata(data) : void 0;
       }
 
     };
 
     _.extend(Node.prototype, Backbone.Events);
-
-    defaultChannels = 2;
 
     return Node;
 
@@ -221,7 +198,7 @@
       });
       this.on("change:trackGain", this.setTrackGain);
       this.on("ended", this.stop);
-      return this.sink = this.node.webcast;
+      return this.sink = this.node.sink;
     }
 
     togglePassThrough() {
@@ -317,7 +294,8 @@
       this.destination = this.trackGain;
       this.passThrough = this.createPassThrough();
       this.passThrough.connect(this.node.context.destination);
-      return this.destination.connect(this.passThrough);
+      this.destination.connect(this.passThrough);
+      return this.node.context.resume();
     }
 
     togglePause() {
@@ -448,9 +426,11 @@
 
     initialize() {
       super.initialize(...arguments);
-      this.mixer.on("change:slider", this.setMixGain);
+      this.mixer.on("change:slider", () => {
+        return this.setMixGain();
+      });
       this.mixGain = this.node.context.createGain();
-      this.mixGain.connect(this.node.webcast);
+      this.mixGain.connect(this.node.sink);
       return this.sink = this.mixGain;
     }
 
@@ -966,9 +946,9 @@
         return this;
       }
 
-      onUri() {
+      onUrl() {
         return this.model.set({
-          uri: this.$(".uri").val()
+          url: this.$(".url").val()
         });
       }
 
@@ -1057,7 +1037,7 @@
     };
 
     Settings.prototype.events = {
-      "change .uri": "onUri",
+      "change .url": "onUrl",
       "change input.encoder": "onEncoder",
       "change input.channels": "onChannels",
       "change .samplerate": "onSamplerate",
@@ -1079,14 +1059,13 @@
       slider: 0
     });
     Webcaster.settings = new Webcaster.Model.Settings({
-      uri: "ws://source:hackme@localhost:8080/mount",
+      url: "ws://source:hackme@localhost:8080/mount",
       bitrate: 128,
       bitrates: [8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320],
       samplerate: 44100,
       samplerates: [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000],
       channels: 2,
-      encoder: "mp3",
-      asynchronous: true,
+      mimeType: "audio/webm",
       passThrough: false
     }, {
       mixer: Webcaster.mixer

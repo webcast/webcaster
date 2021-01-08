@@ -3,7 +3,7 @@ $ ->
     slider: 0
 
   Webcaster.settings = new Webcaster.Model.Settings({
-    uri:          "ws://source:hackme@localhost:8080/mount"
+    url:          "ws://source:hackme@localhost:8080/mount"
     bitrate:      128
     bitrates:     [ 8, 16, 24, 32, 40, 48, 56,
                     64, 80, 96, 112, 128, 144,
@@ -12,8 +12,7 @@ $ ->
     samplerates:  [ 8000, 11025, 12000, 16000,
                     22050, 24000, 32000, 44100, 48000 ]
     channels:     2
-    encoder:      "mp3"
-    asynchronous: true
+    mimeType:     "audio/webm"
     passThrough:  false
   }, {
     mixer: Webcaster.mixer

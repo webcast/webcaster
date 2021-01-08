@@ -1,73 +1,57 @@
 class Webcaster.Node
   _.extend @prototype, Backbone.Events
 
-  defaultChannels = 2
-
   constructor: ({@model}) ->
-    if typeof webkitAudioContext != "undefined"
-      @context = new webkitAudioContext
-    else
-      @context = new AudioContext
+    setContext = =>
+      sampleRate = @model.get("samplerate")
+      channels = @model.get("channels")
 
-    @webcast = @context.createWebcastSource 4096, defaultChannels
+      @context = new AudioContext(
+        sampleRate: sampleRate
+      )
 
-    @connect()
+      @sink = @context.createScriptProcessor 256, 2, 2
 
-    @model.on "change:passThrough", =>
-      @webcast.setPassThrough @model.get("passThrough")
+      @sink.onaudioprocess = (buf) =>
+        channelData = buf.inputBuffer.getChannelData channel
 
-    @model.on "change:channels", =>
-      @reconnect()
+        for channel in [0..buf.inputBuffer.numberOfChannels-1]
+          if @model.get("passThrough")
+            buf.outputBuffer.getChannelData(channel).set channelData
+          else
+            buf.outputBuffer.getChannelData(channel).set (new Float32Array channelData.length)
 
-  connect: ->
-    if @model.get("channels") == 1
-      @merger ||= @context.createChannelMerger @defaultChannels
-      @merger.connect @context.destination
-      @webcast.connect @merger
-    else
-      @webcast.connect @context.destination   
+      @sink.connect @context.destination
 
-  disconnect: ->
-    @webcast.disconnect()
-    @merger?.disconnect()
+      @destination = @context.createMediaStreamDestination()
+      @destination.channelCount = channels
 
-  reconnect: ->
-    @disconnect()
-    @connect()
+    setContext()
 
-  startStream: ->
+    @model.on "change:samplerate", setContext
+    @model.on "change:channels", setContext
+
+  startStream: =>
     @context.resume()
 
-    switch @model.get("encoder")
-      when "mp3"
-        encoder = Webcast.Encoder.Mp3
-      when "raw"
-        encoder = Webcast.Encoder.Raw
+    mimeType = @model.get("mimeType")
+    bitrate = Number(@model.get("bitrate"))*1000;
+    url = @model.get("url")
 
-    @encoder = new encoder
-      channels   : @model.get("channels")
-      samplerate : @model.get("samplerate")
-      bitrate    : @model.get("bitrate")
+    @mediaRecorder = new MediaRecorder(@destination.stream,
+      mimeType: mimeType,
+      audioBitsPerSecond: bitrate
+    );
 
-    if @model.get("samplerate") != @context.sampleRate
-      @encoder = new Webcast.Encoder.Resample
-        encoder    : @encoder
-        type       : Samplerate.LINEAR,
-        samplerate : @context.sampleRate
+    @socket = new Webcast.Socket(
+      mediaRecorder: @mediaRecorder,
+      url: url
+    )
 
-    if @model.get("asynchronous")
-      @encoder = new Webcast.Encoder.Asynchronous
-        encoder : @encoder
-        scripts: [
-          "https://cdn.rawgit.com/webcast/libsamplerate.js/master/dist/libsamplerate.js",
-          "https://cdn.rawgit.com/savonet/shine/master/js/dist/libshine.js",
-          "https://cdn.rawgit.com/webcast/webcast.js/master/lib/webcast.js"
-        ]
+    @mediaRecorder.start()
 
-    @webcast.connectSocket @encoder, @model.get("uri")
-
-  stopStream: ->
-    @webcast.close()
+  stopStream: =>
+    @mediaRecorder?.stop()
 
   createAudioSource: ({file, audio}, model, cb) ->
     el = new Audio URL.createObjectURL(file)
@@ -127,7 +111,4 @@ class Webcaster.Node
       cb source
 
   sendMetadata: (data) ->
-    @webcast.sendMetadata data
-
-  close: (cb) ->
-    @webcast.close cb
+    @socket?.sendMetadata data

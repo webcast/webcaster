@@ -9,7 +9,7 @@ class Webcaster.Model.Track extends Backbone.Model
     @on "change:trackGain", @setTrackGain
     @on "ended", @stop
 
-    @sink = @node.webcast
+    @sink = @node.sink
 
   togglePassThrough: ->
     passThrough = @get("passThrough")
@@ -91,6 +91,7 @@ class Webcaster.Model.Track extends Backbone.Model
     @passThrough.connect @node.context.destination
     @destination.connect @passThrough
 
+    @node.context.resume()
 
   togglePause: ->
     return unless @source?.pause?

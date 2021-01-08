@@ -1,6 +1,6 @@
 class Webcaster.View.Settings extends Backbone.View
   events:
-    "change .uri"            : "onUri"
+    "change .url"            : "onUrl"
     "change input.encoder"   : "onEncoder"
     "change input.channels"  : "onChannels"
     "change .samplerate"     : "onSamplerate"
@@ -36,8 +36,8 @@ class Webcaster.View.Settings extends Backbone.View
 
     this
 
-  onUri: ->
-    @model.set uri: @$(".uri").val()
+  onUrl: ->
+    @model.set url: @$(".url").val()
 
   onEncoder: (e) ->
     @model.set encoder: $(e.target).val()

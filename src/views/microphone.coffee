@@ -5,7 +5,7 @@ class Webcaster.View.Microphone extends Webcaster.View.Track
     "submit"                 : "onSubmit"
 
   initialize: ->
-    super
+    super arguments...
 
     @model.on "playing", =>
       @$(".play-control").removeAttr "disabled"

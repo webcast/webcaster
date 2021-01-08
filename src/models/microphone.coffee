@@ -1,6 +1,6 @@
 class Webcaster.Model.Microphone extends Webcaster.Model.Track
   initialize: ->
-    super
+    super arguments...
 
     @on "change:device", ->
       return unless @source?

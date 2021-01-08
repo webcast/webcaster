@@ -13,7 +13,7 @@ class Webcaster.View.Playlist extends Webcaster.View.Track
     "submit"                 : "onSubmit"
 
   initialize: ->
-    super
+    super arguments...
 
     @model.on "change:fileIndex", =>
       @$(".track-row").removeClass "success"

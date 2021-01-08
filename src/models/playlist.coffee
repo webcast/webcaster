@@ -1,6 +1,6 @@
 class Webcaster.Model.Playlist extends Webcaster.Model.Track
   initialize: ->
-    super
+    super arguments...
 
     @mixer.on "change:slider", @setMixGain
 

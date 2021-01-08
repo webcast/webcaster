@@ -2,6 +2,7 @@ class Webcaster.View.Microphone extends Webcaster.View.Track
   events:
     "click .record-audio"    : "onRecord"
     "click .passThrough"     : "onPassThrough"
+    "change .audio-device"   : "onAudioDevice"
     "submit"                 : "onSubmit"
 
   initialize: ->
@@ -58,6 +59,9 @@ class Webcaster.View.Microphone extends Webcaster.View.Track
         @$(".microphone-entry").show()
 
     this
+
+  onAudioDevice:(e) ->
+    @model.set device: $(e.target).val()
 
   onRecord: (e) ->
     e.preventDefault()

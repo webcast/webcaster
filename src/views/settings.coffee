@@ -1,10 +1,12 @@
 class Webcaster.View.Settings extends Backbone.View
   events:
-    "change .uri"            : "onUri"
+    "change .url"            : "onUrl"
     "change input.encoder"   : "onEncoder"
     "change input.channels"  : "onChannels"
+    "change .mimeType"       : "onMimeType"
     "change .samplerate"     : "onSamplerate"
-    "change .bitrate"        : "onBitrate"
+    "change .audio-bitrate"  : "onAudioBitrate"
+    "change .video-bitrate"  : "onVideoBitrate"
     "change .asynchronous"   : "onAsynchronous"
     "click .passThrough"     : "onPassThrough"
     "click .start-stream"    : "onStart"
@@ -13,13 +15,66 @@ class Webcaster.View.Settings extends Backbone.View
     "submit"                 : "onSubmit"
 
   initialize: ({@node}) ->
+    @model.on "change:mimeTypes", => @setFormats()
+
     @model.on "change:passThrough", =>
       if @model.get("passThrough")
         @$(".passThrough").addClass("btn-cued").removeClass "btn-info"
       else
         @$(".passThrough").addClass("btn-info").removeClass "btn-cued"
 
+    @model.on "change:playing", =>
+      if @model.get("playing") > 0
+        @setPlaying()
+      else
+        @setNotPlaying()
+
+    @model.on "change:streaming", =>
+      if @model.get("streaming")
+        @setStreaming()
+      else
+        @setNotStreaming()
+
+    @model.on "change:camera", =>
+      if @model.get("camera")
+        @$(".video-settings").show()
+      else
+        @$(".video-settings").hide()
+
+  setPlaying: ->
+    @$(".samplerate, .channels").attr disabled: "disabled"
+
+  setNotPlaying: ->
+    @$(".samplerate, .channels").removeAttr "disabled"
+
+  setStreaming: ->
+    @setPlaying()
+
+    @$(".stop-stream").show()
+    @$(".start-stream").hide()
+    @$(".mimeType, .audio-bitrate, .video-bitrate, .url").attr disabled: "disabled"
+    @$(".manual-metadata, .update-metadata").removeAttr "disabled"
+
+  setNotStreaming: ->
+    unless @model.get("playing")
+      @setNotPlaying()
+
+    @$(".stop-stream").hide()
+    @$(".start-stream").show()
+    @$(".mimeType, .audio-bitrate, .video-bitrate, .url").removeAttr "disabled"
+    @$(".manual-metadata, .update-metadata").attr disabled: "disabled"
+
+  setFormats: ->
+    mimeType = @model.get "mimeType"
+    @$(".mimeType").empty()
+    _.each @model.get("mimeTypes"), ({name, value}) =>
+      selected = if mimeType == value then "selected" else ""
+      $("<option value='#{value}' #{selected}>#{name}</option>").
+        appendTo @$(".mimeType")
+
   render: ->
+    @setFormats()
+
     samplerate = @model.get "samplerate"
     @$(".samplerate").empty()
     _.each @model.get("samplerates"), (rate) =>
@@ -27,17 +82,24 @@ class Webcaster.View.Settings extends Backbone.View
       $("<option value='#{rate}' #{selected}>#{rate}</option>").
         appendTo @$(".samplerate")
 
-    bitrate = @model.get "bitrate"
-    @$(".bitrate").empty()
-    _.each @model.get("bitrates"), (rate) =>
-      selected = if bitrate == rate then "selected" else ""
+    audioBitrate = @model.get "audioBitrate"
+    @$(".audio-bitrate").empty()
+    _.each @model.get("audioBitrates"), (rate) =>
+      selected = if audioBitrate == rate then "selected" else ""
       $("<option value='#{rate}' #{selected}>#{rate}</option>").
-        appendTo @$(".bitrate")
+        appendTo @$(".audio-bitrate")
+
+    videoBitrate = @model.get "videoBitrate"
+    @$(".video-bitrate").empty()
+    _.each @model.get("videoBitrates"), (rate) =>
+      selected = if videoBitrate == rate then "selected" else ""
+      $("<option value='#{rate}' #{selected}>#{rate}</option>").
+        appendTo @$(".video-bitrate")
 
     this
 
-  onUri: ->
-    @model.set uri: @$(".uri").val()
+  onUrl: ->
+    @model.set url: @$(".url").val()
 
   onEncoder: (e) ->
     @model.set encoder: $(e.target).val()
@@ -45,11 +107,17 @@ class Webcaster.View.Settings extends Backbone.View
   onChannels: (e) ->
     @model.set channels: parseInt($(e.target).val())
 
+  onMimeType: (e) ->
+    @model.set mimeType: $(e.target).val()
+
   onSamplerate: (e) ->
     @model.set samplerate: parseInt($(e.target).val())
 
-  onBitrate: (e) ->
-    @model.set bitrate: parseInt($(e.target).val())
+  onAudioBitrate: (e) ->
+    @model.set audioBitrate: parseInt($(e.target).val())
+
+  onVideoBitrate: (e) ->
+    @model.set videoBitrate: parseInt($(e.target).val())
 
   onAsynchronous: (e) ->
     @model.set asynchronous: $(e.target).is(":checked")
@@ -62,20 +130,10 @@ class Webcaster.View.Settings extends Backbone.View
   onStart: (e) ->
     e.preventDefault()
 
-    @$(".stop-stream").show()
-    @$(".start-stream").hide()
-    @$("input, select").attr disabled: "disabled"
-    @$(".manual-metadata, .update-metadata").removeAttr "disabled"
-
     @node.startStream()
 
   onStop: (e) ->
     e.preventDefault()
-
-    @$(".stop-stream").hide()
-    @$(".start-stream").show()
-    @$("input, select").removeAttr "disabled"
-    @$(".manual-metadata, .update-metadata").attr disabled: "disabled"
 
     @node.stopStream()
 

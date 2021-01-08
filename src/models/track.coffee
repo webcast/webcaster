@@ -9,8 +9,6 @@ class Webcaster.Model.Track extends Backbone.Model
     @on "change:trackGain", @setTrackGain
     @on "ended", @stop
 
-    @sink = @node.webcast
-
   togglePassThrough: ->
     passThrough = @get("passThrough")
     if passThrough
@@ -77,9 +75,14 @@ class Webcaster.Model.Track extends Backbone.Model
     return unless @trackGain?
     @trackGain.gain.value = parseFloat(@get("trackGain"))/100.0
 
+  sink: ->
+    @node.sink
+
   prepare: ->
+    @node.registerSource()
+
     @controlsNode = @createControlsNode()
-    @controlsNode.connect @sink
+    @controlsNode.connect @sink()
 
     @trackGain = @node.context.createGain()
     @trackGain.connect @controlsNode
@@ -91,6 +94,7 @@ class Webcaster.Model.Track extends Backbone.Model
     @passThrough.connect @node.context.destination
     @destination.connect @passThrough
 
+    @node.context.resume()
 
   togglePause: ->
     return unless @source?.pause?
@@ -112,6 +116,8 @@ class Webcaster.Model.Track extends Backbone.Model
     @source = @trackGain = @controlsNode = @passThrough = null
 
     @set position: 0.0
+    @node.unregisterSource()
+
     @trigger "stopped"
 
   seek: (percent) ->

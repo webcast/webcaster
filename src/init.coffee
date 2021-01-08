@@ -2,19 +2,39 @@ $ ->
   Webcaster.mixer = new Webcaster.Model.Mixer
     slider: 0
 
+  enabledMimeTypes = (types) =>
+    _.filter types, ({value}) =>
+      MediaRecorder.isTypeSupported value
+
+  audioMimeTypes = enabledMimeTypes [
+    { name: "Opus audio", value: "audio/webm;codecs=opus"}
+  ]
+  videoMimeTypes = enabledMimeTypes [
+    { name: "Opus audio/h264 video", value: "video/webm;codecs=h264,opus"},
+    { name: "Opus audio/vp9 video", value: "video/webm;codecs=vp9,opus"},
+    { name: "Opus audio/vp8 video", value: "video/webm;codecs=vp8,opus"}
+  ]
+
   Webcaster.settings = new Webcaster.Model.Settings({
-    uri:          "ws://source:hackme@localhost:8080/mount"
-    bitrate:      128
-    bitrates:     [ 8, 16, 24, 32, 40, 48, 56,
-                    64, 80, 96, 112, 128, 144,
-                    160, 192, 224, 256, 320 ]
-    samplerate:   44100
-    samplerates:  [ 8000, 11025, 12000, 16000,
-                    22050, 24000, 32000, 44100, 48000 ]
-    channels:     2
-    encoder:      "mp3"
-    asynchronous: true
-    passThrough:  false
+    url:            "ws://source:hackme@localhost:8080/mount"
+    audioBitrate:   128
+    audioBitrates:  [ 8, 16, 24, 32, 40, 48, 56,
+                      64, 80, 96, 112, 128, 144,
+                      160, 192, 224, 256, 320 ]
+    videoBitrate:   2.5
+    videoBitrates:  [ 2.5, 3.5, 5, 7, 10]
+    samplerate:     44100
+    samplerates:    [ 8000, 11025, 12000, 16000,
+                     22050, 24000, 32000, 44100, 48000 ]
+    channels:       2
+    mimeTypes:      audioMimeTypes
+    audioMimeTypes: audioMimeTypes
+    videoMimeTypes: videoMimeTypes
+    mimeType:       audioMimeTypes[0]?.value
+    passThrough:    false
+    camera:         false
+    streaming:      false
+    playing:        0
   }, {
     mixer: Webcaster.mixer
   })
@@ -42,6 +62,10 @@ $ ->
           node:  Webcaster.node
         })
         el: $("div.microphone")
+
+      camera: new Webcaster.View.Camera
+        model: Webcaster.settings
+        el: $("div.camera")
 
       playlistLeft : new Webcaster.View.Playlist
         model : new Webcaster.Model.Playlist({

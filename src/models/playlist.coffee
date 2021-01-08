@@ -2,12 +2,21 @@ class Webcaster.Model.Playlist extends Webcaster.Model.Track
   initialize: ->
     super arguments...
 
-    @mixer.on "change:slider", @setMixGain
+    @mixer.on "change:slider", => @setMixGain()
 
+  prepare: ->
     @mixGain = @node.context.createGain()
-    @mixGain.connect @node.webcast
+    @mixGain.connect @node.sink
 
-    @sink = @mixGain
+    super arguments...
+
+  stop: ->
+    @mixGain?.disconnect()
+
+    super arguments...
+
+  sink: ->
+    @mixGain
 
   setMixGain: =>
     return unless @mixGain?

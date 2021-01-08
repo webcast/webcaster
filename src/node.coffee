@@ -1,73 +1,81 @@
 class Webcaster.Node
   _.extend @prototype, Backbone.Events
 
-  defaultChannels = 2
-
   constructor: ({@model}) ->
-    if typeof webkitAudioContext != "undefined"
-      @context = new webkitAudioContext
-    else
-      @context = new AudioContext
+    setContext = =>
+      sampleRate = @model.get("samplerate")
+      channels = @model.get("channels")
 
-    @webcast = @context.createWebcastSource 4096, defaultChannels
+      @context = new AudioContext(
+        sampleRate: sampleRate
+      )
 
-    @connect()
+      @sink = @context.createScriptProcessor 256, 2, 2
+      @sink.onaudioprocess = (buf) =>
+        channelData = buf.inputBuffer.getChannelData channel
 
-    @model.on "change:passThrough", =>
-      @webcast.setPassThrough @model.get("passThrough")
+        for channel in [0..buf.inputBuffer.numberOfChannels-1]
+          buf.outputBuffer.getChannelData(channel).set channelData    
 
-    @model.on "change:channels", =>
-      @reconnect()
+      @playThrough = @context.createScriptProcessor 256, 2, 2
 
-  connect: ->
-    if @model.get("channels") == 1
-      @merger ||= @context.createChannelMerger @defaultChannels
-      @merger.connect @context.destination
-      @webcast.connect @merger
-    else
-      @webcast.connect @context.destination   
+      @playThrough.onaudioprocess = (buf) =>
+        channelData = buf.inputBuffer.getChannelData channel
 
-  disconnect: ->
-    @webcast.disconnect()
-    @merger?.disconnect()
+        for channel in [0..buf.inputBuffer.numberOfChannels-1]
+          if @model.get("passThrough")
+            buf.outputBuffer.getChannelData(channel).set channelData
+          else
+            buf.outputBuffer.getChannelData(channel).set (new Float32Array channelData.length)
 
-  reconnect: ->
-    @disconnect()
-    @connect()
+      @sink.connect @playThrough
+      @playThrough.connect @context.destination
 
-  startStream: ->
+      @streamNode = @context.createMediaStreamDestination()
+      @streamNode.channelCount = channels
+
+      @sink.connect @streamNode
+
+    setContext()
+
+    @model.on "change:samplerate", setContext
+    @model.on "change:channels", setContext
+
+  registerSource: ->
+    @model.set "playing", @model.get("playing") + 1
+
+  unregisterSource: ->
+    @model.set "playing", Math.max(0, @model.get("playing") - 1)
+
+  startStream: =>
+    @model.set "streaming", true
+
     @context.resume()
 
-    switch @model.get("encoder")
-      when "mp3"
-        encoder = Webcast.Encoder.Mp3
-      when "raw"
-        encoder = Webcast.Encoder.Raw
+    mimeType = @model.get("mimeType")
+    audioBitrate = Number(@model.get("audioBitrate"))*1000;
+    videoBitrate = Number(@model.get("videoBitrate"))*1000000;
+    url = @model.get("url")
 
-    @encoder = new encoder
-      channels   : @model.get("channels")
-      samplerate : @model.get("samplerate")
-      bitrate    : @model.get("bitrate")
+    if @model.get("camera")
+      @streamNode.stream.addTrack $(".camera-preview").get(0).captureStream().getTracks()[0]
 
-    if @model.get("samplerate") != @context.sampleRate
-      @encoder = new Webcast.Encoder.Resample
-        encoder    : @encoder
-        type       : Samplerate.LINEAR,
-        samplerate : @context.sampleRate
+    @mediaRecorder = new MediaRecorder(@streamNode.stream,
+      mimeType: mimeType,
+      audioBitsPerSecond: audioBitrate
+      videoBitsPerSecond: videoBitrate
+    );
 
-    if @model.get("asynchronous")
-      @encoder = new Webcast.Encoder.Asynchronous
-        encoder : @encoder
-        scripts: [
-          "https://cdn.rawgit.com/webcast/libsamplerate.js/master/dist/libsamplerate.js",
-          "https://cdn.rawgit.com/savonet/shine/master/js/dist/libshine.js",
-          "https://cdn.rawgit.com/webcast/webcast.js/master/lib/webcast.js"
-        ]
+    @socket = new Webcast.Socket(
+      mediaRecorder: @mediaRecorder,
+      url: url
+    )
 
-    @webcast.connectSocket @encoder, @model.get("uri")
+    @mediaRecorder.start(1000)
 
-  stopStream: ->
-    @webcast.close()
+  stopStream: =>
+    @mediaRecorder?.stop()
+    @model.set "streaming", false
 
   createAudioSource: ({file, audio}, model, cb) ->
     el = new Audio URL.createObjectURL(file)
@@ -127,7 +135,4 @@ class Webcaster.Node
       cb source
 
   sendMetadata: (data) ->
-    @webcast.sendMetadata data
-
-  close: (cb) ->
-    @webcast.close cb
+    @socket?.sendMetadata data

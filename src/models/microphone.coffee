@@ -2,13 +2,7 @@ class Webcaster.Model.Microphone extends Webcaster.Model.Track
   initialize: ->
     super arguments...
 
-    @on "change:device", ->
-      return unless @source?
-      @createSource()
-
   createSource: (cb) ->
-    @source.disconnect @destination if @source?
-
     constraints = {video:false}
 
     if @get("device")
@@ -26,3 +20,8 @@ class Webcaster.Model.Microphone extends Webcaster.Model.Track
 
     @createSource =>
       @trigger "playing"
+
+  stop: ->
+    @source?.disconnect()
+
+    super arguments...

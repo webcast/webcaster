@@ -14,8 +14,6 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
     <Script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>
 
-    <script src="//cdn.rawgit.com/toots/shine/master/js/dist/libshine.js"></script>
-    <script src="//cdn.rawgit.com/webcast/libsamplerate.js/master/dist/libsamplerate.js"></script>
     <script src="//cdn.rawgit.com/webcast/taglib.js/master/dist/taglib.js"></script>
     <script src="//cdn.rawgit.com/webcast/webcast.js/master/lib/webcast.js"></script>
     <script src="js/client.js"></script>
@@ -27,9 +25,23 @@
       <div class="row-fluid">
         <div class="span3 settings">
           <div class="well sidebar-nav">
+            <div class="camera">
+              <video class="camera-preview" style="height: 100%; width: 100%;"></video>
+              <form class="camera-settings" style="display: none;">
+                <fieldset>
+                  <div class="control-group">
+                    <div class="controls">
+                      <label class="checkbox">
+                        <input type="checkbox" name="enable-camera" value="2" class="enable-camera">
+                        Enable camera
+                      </label>
+                    </div>
+                  </div>
+                </fieldset>
+              </form>
+            </div>
             <form>
               <fieldset>
-                <legend>Setup</legend>
                 <div class="control-group">
                   <div class="controls">
                     <button class="btn btn-primary start-stream">Start streaming</button>
@@ -48,24 +60,25 @@
                 <div class="tab-content">
                   <div class="tab-pane active" id="settings">
                     <div class="control-group">
-                      <label>Encoder</label>
+                      <label>Format</label>
                       <div class="controls">
-                        <label class="radio inline">
-                          <input type="radio" name="encoder" value="mp3" class="encoder" checked>MP3
-                        </label>
-                        <label class="radio inline">
-                          <input type="radio" name="encoder" value="raw" class="encoder">Raw
-                        </label>
+                        <select class="mimeType"></select>
                       </div>
                     </div>
                     <div class="control-group">
+                      <div class="video-settings" style="display: none;">
+                        <label>Video Bitrate (MB/s)</label>
+                        <div class="controls">
+                          <select class="video-bitrate"></select>
+                        </div>
+                      </div>
                       <label>Samplerate</label>
                       <div class="controls">
                         <select class="samplerate"></select>
                       </div>
-                      <label>Bitrate</label>
+                      <label>Audio Bitrate (kB/s)</label>
                       <div class="controls">
-                        <select class="bitrate"></select>
+                        <select class="audio-bitrate"></select>
                       </div>
                       <label>Channels</label>
                       <div class="controls">
@@ -80,10 +93,7 @@
                     <div class="control-group">
                       <label>Stream destination URI</label>
                       <div class="controls">
-                        <input class="uri" type="text" size="40" value="ws://source:hackme@localhost:8080/mount">
-                        <label class="checkbox">
-                          <input type="checkbox" class="asynchronous" checked> Use asynchronous worker
-                        </label>
+                        <input class="url" type="text" size="40" value="ws://source:hackme@localhost:8080/mount">
                       </div>
                     </div>
                   </div>
@@ -196,7 +206,7 @@
                 <div class="control-group microphone-entry" align="center" style="display: none;">
                   <label>Microphone source</label>
                   <div class="controls">
-                    <select></select>
+                    <select class="audio-device"></select>
                   </div>
                 </div>
               </fieldset>

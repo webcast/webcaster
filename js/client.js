@@ -112,7 +112,10 @@
         videoBitrate = Number(this.model.get("videoBitrate")) * 1000000;
         url = this.model.get("url");
         if (this.model.get("camera")) {
-          this.streamNode.stream.addTrack($(".camera-preview").get(0).captureStream().getTracks()[0]);
+          preview = $(".camera-preview").get(0)
+          //Make Firefox happy
+          captureStream = preview.captureStream || preview.mozCaptureStream;
+          this.streamNode.stream.addTrack(captureStream().getTracks()[0]);
         }
         this.mediaRecorder = new MediaRecorder(this.streamNode.stream, {
           mimeType: mimeType,

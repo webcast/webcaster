@@ -11,5 +11,4 @@ liquidsoap "output.ao(fallible=true,audio_to_stereo(input.harbor('mount',port=80
 
 The client looks like this:
 
-<img src="https://raw.githubusercontent.com/webcast/webcaster/master/img/screenshot.png"/>
-
+![Webcaster](https://user-images.githubusercontent.com/2012073/118627421-fd3fe800-b7cb-11eb-9626-8da1e0b52189.png)

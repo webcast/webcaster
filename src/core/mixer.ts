@@ -29,10 +29,13 @@ export const supportedFormats = (formats: Format[]) => formats.filter(f => Media
 
 const changed = (target: EventTarget) => target.dispatchEvent(new Event("change"))
 
+const emit = (target: EventTarget, type: string) => target.dispatchEvent(new Event(type))
+
 const rampTo = (param: AudioParam, value: number) => param.setTargetAtTime(value, 0, 0.01)
 
 /**
- * The audio graph and the outgoing stream. Dispatches `change` when its state changes.
+ * The audio graph and the outgoing stream. Dispatches `change` when its state changes, and `status` with every new
+ * stream status message, even one identical to the previous.
  *
  * The AudioContext is created on first use, which must happen in a user gesture for audio to start.
  */
@@ -102,33 +105,37 @@ export class Mixer extends EventTarget implements Cueable {
     const tracks = [...this.output.stream.getAudioTracks(), ...(video?.getVideoTracks() ?? [])]
 
     this.stopping = false
-    let mediaRecorder: MediaRecorder
+    let socket: Socket | null = null
     try {
-      mediaRecorder = new MediaRecorder(new MediaStream(tracks), {
+      const mediaRecorder = new MediaRecorder(new MediaStream(tracks), {
         mimeType,
         audioBitsPerSecond: audioBitrate * 1000,
         ...(video && videoBitrate ? { videoBitsPerSecond: videoBitrate * 1000 } : {}),
       })
-      this.socket = new Socket({
+      socket = new Socket({
         mediaRecorder,
         url,
         info: {
-          audio: { channels, bitrate: audioBitrate },
-          ...(video ? { video: { bitrate: videoBitrate } } : {}),
           ...info,
+          audio: { channels, bitrate: audioBitrate, ...info?.audio },
+          ...(video ? { video: { bitrate: videoBitrate, ...info?.video } } : {}),
         },
-        onReady: () => this.setState("live", "Streaming."),
+        onOpen: () => {
+          if (this.socket === socket) this.setState("live", "Streaming.")
+        },
         onClose: ({ code, reason }) => {
+          if (this.socket !== socket) return
           this.socket = null
           this.setState("idle", this.stopping ? "Stopped." : `Disconnected: ${reason || `code ${code}`}.`)
         },
       })
+      mediaRecorder.start(1000)
+      this.socket = socket
+      this.setState("connecting", "Connecting…")
     } catch (error) {
+      socket?.close()
       this.setState("idle", `Cannot start: ${error instanceof Error ? error.message : error}`)
-      return
     }
-    mediaRecorder.start(1000)
-    this.setState("connecting", "Connecting…")
   }
 
   stopStream() {
@@ -144,6 +151,7 @@ export class Mixer extends EventTarget implements Cueable {
     this.state = state
     this.message = message
     changed(this)
+    emit(this, "status")
   }
 }
 
@@ -238,6 +246,7 @@ export type Tags = { title?: string; artist?: string; duration?: number }
 /** Reads a file's tags. Optional: tracks are listed by file name until their tags are known. */
 export type TagReader = (file: File) => Promise<Tags>
 
+/** Dispatches `tracks` when the track list, a track's tags or the current track change. */
 export class Deck extends Channel {
   tracks: Track[] = []
   index = -1
@@ -283,18 +292,19 @@ export class Deck extends Channel {
           if (title) track.title = title
           if (artist) track.artist = artist
           if (duration) track.duration = duration
-          changed(this)
+          emit(this, "tracks")
         },
         () => {}
       )
     }
-    changed(this)
+    emit(this, "tracks")
   }
 
   play(index: number) {
     this.stop()
-    this.index = index
     const track = this.tracks[index]
+    this.index = track ? index : -1
+    emit(this, "tracks")
     if (!track) return changed(this)
 
     const context = this.mixer.ensureContext()
@@ -304,17 +314,20 @@ export class Deck extends Channel {
     element.addEventListener("pause", () => changed(this))
     element.addEventListener("loadedmetadata", () => {
       track.duration = element.duration
-      changed(this)
+      emit(this, "tracks")
     })
     this.attach(context.createMediaElementSource(element))
     this.element = element
-    element.play().catch(() => this.stop())
+    // Switching tracks aborts the previous element's play(): only a failure of the current one stops the deck.
+    element.play().catch(() => {
+      if (this.element === element) this.stop()
+    })
     changed(this)
   }
 
   togglePause() {
     if (!this.element) return this.play(Math.max(this.index, 0))
-    if (this.element.paused) void this.element.play()
+    if (this.element.paused) this.element.play().catch(() => {})
     else this.element.pause()
   }
 
@@ -344,6 +357,8 @@ export class Deck extends Channel {
 
 export class Microphone extends Channel {
   private stream: MediaStream | null = null
+  // Identifies the latest start() or stop(): an older start() that resolves late releases its stream.
+  private request = 0
 
   get active() {
     return this.stream !== null
@@ -361,6 +376,7 @@ export class Microphone extends Channel {
    */
   async start({ deviceId, lineIn = false }: { deviceId?: string; lineIn?: boolean } = {}) {
     this.stop()
+    const request = ++this.request
     const context = this.mixer.ensureContext()
     const audio: MediaTrackConstraints = {
       ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
@@ -368,12 +384,23 @@ export class Microphone extends Channel {
         ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 } }
         : {}),
     }
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio })
-    this.attach(context.createMediaStreamSource(this.stream))
+    const stream = await navigator.mediaDevices.getUserMedia({ audio })
+    if (request !== this.request) {
+      for (const track of stream.getTracks()) track.stop()
+      return
+    }
+    // An unplugged device or a revoked permission ends the track.
+    for (const track of stream.getAudioTracks())
+      track.addEventListener("ended", () => {
+        if (this.stream === stream) this.stop()
+      })
+    this.stream = stream
+    this.attach(context.createMediaStreamSource(stream))
     changed(this)
   }
 
   stop() {
+    this.request++
     if (!this.stream) return
     this.detach()
     for (const track of this.stream.getTracks()) track.stop()

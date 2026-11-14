@@ -119,8 +119,8 @@ const setupDeck = (side: Side, title: string) => {
     play.textContent = deck.playing ? "⏸" : "▶"
     play.ariaLabel = deck.playing ? "Pause" : "Play"
     seek.disabled = !deck.loaded
-    tracks.replaceChildren(...deck.tracks.map((_, index) => trackRow(deck, index)))
   })
+  deck.addEventListener("tracks", () => tracks.replaceChildren(...deck.tracks.map((_, index) => trackRow(deck, index))))
 
   frameCallbacks.push(() => {
     // Leave the slider alone while the user drags it.
@@ -218,21 +218,34 @@ const setupStream = () => {
   $<HTMLElement>(".camera-option", form).hidden = video.length === 0
   showFormats(audio)
 
-  fields.camera.addEventListener("change", async () => {
+  const setCamera = (stream: MediaStream | null) => {
     camera?.getTracks().forEach(track => track.stop())
-    camera = null
-    if (fields.camera.checked) {
-      try {
-        camera = await navigator.mediaDevices.getUserMedia({ video: true })
-      } catch (error) {
-        fields.camera.checked = false
-        setStatus(`Camera: ${error instanceof Error ? error.message : error}`)
-      }
+    camera = stream
+    fields.camera.checked = stream !== null
+    preview.srcObject = stream
+    preview.hidden = !stream
+    if (stream) void preview.play()
+    showFormats(stream ? video : audio)
+    // An unplugged camera or a revoked permission ends the track.
+    stream?.getVideoTracks()[0]?.addEventListener("ended", () => {
+      if (camera === stream) setCamera(null)
+    })
+  }
+
+  // Identifies the latest toggle: a camera granted after the box was toggled again is released.
+  let cameraRequest = 0
+  fields.camera.addEventListener("change", async () => {
+    const request = ++cameraRequest
+    if (!fields.camera.checked) return setCamera(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      if (request === cameraRequest) setCamera(stream)
+      else stream.getTracks().forEach(track => track.stop())
+    } catch (error) {
+      if (request !== cameraRequest) return
+      setCamera(null)
+      setStatus(`Camera: ${error instanceof Error ? error.message : error}`)
     }
-    preview.srcObject = camera
-    preview.hidden = !camera
-    if (camera) void preview.play()
-    showFormats(camera ? video : audio)
   })
 
   form.addEventListener("submit", event => {
@@ -260,15 +273,13 @@ const setupStream = () => {
     setStatus("Metadata updated.")
   })
 
-  // The mixer also changes on cue and crossfade: only stream updates replace the status line.
-  let message = mixer.message
   mixer.addEventListener("change", () => {
     settings.disabled = mixer.state !== "idle"
     metadataFields.disabled = mixer.state !== "live"
     start.textContent = mixer.state === "idle" ? "Start streaming" : "Stop streaming"
     start.classList.toggle("live", mixer.state !== "idle")
-    if (mixer.message !== message) setStatus((message = mixer.message))
   })
+  mixer.addEventListener("status", () => setStatus(mixer.message))
 }
 
 const setupCrossfader = () => {

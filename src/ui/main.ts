@@ -139,6 +139,7 @@ const setupMicrophone = () => {
 
   const record = $<HTMLButtonElement>(".record", root)
   const device = $<HTMLSelectElement>(".device", root)
+  const lineIn = $<HTMLInputElement>(".line-in", root)
 
   const listDevices = async () => {
     const selected = device.value
@@ -152,7 +153,7 @@ const setupMicrophone = () => {
 
   const start = async () => {
     try {
-      await microphone.start(device.value || undefined)
+      await microphone.start({ deviceId: device.value || undefined, lineIn: lineIn.checked })
       await listDevices()
     } catch (error) {
       setStatus(`Microphone: ${error instanceof Error ? error.message : error}`)
@@ -161,6 +162,7 @@ const setupMicrophone = () => {
 
   record.addEventListener("click", () => (microphone.active ? microphone.stop() : start()))
   device.addEventListener("change", () => microphone.active && start())
+  lineIn.addEventListener("change", () => microphone.active && start())
   microphone.addEventListener("change", () => {
     record.setAttribute("aria-pressed", String(microphone.active))
     record.textContent = microphone.active ? "Microphone off" : "Microphone on"

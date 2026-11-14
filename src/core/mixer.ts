@@ -355,10 +355,19 @@ export class Microphone extends Channel {
     return devices.filter(d => d.kind === "audioinput" && d.deviceId && d.deviceId !== "default")
   }
 
-  async start(deviceId?: string) {
+  /**
+   * `lineIn` turns off the browser's voice processing (echo cancellation, noise suppression, automatic gain), which
+   * degrades music from a mixer or any other line-level source, and asks for stereo.
+   */
+  async start({ deviceId, lineIn = false }: { deviceId?: string; lineIn?: boolean } = {}) {
     this.stop()
     const context = this.mixer.ensureContext()
-    const audio = deviceId ? { deviceId: { exact: deviceId } } : true
+    const audio: MediaTrackConstraints = {
+      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+      ...(lineIn
+        ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 } }
+        : {}),
+    }
     this.stream = await navigator.mediaDevices.getUserMedia({ audio })
     this.attach(context.createMediaStreamSource(this.stream))
     changed(this)

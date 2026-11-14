@@ -5,7 +5,7 @@ crossfader, a microphone, an optional camera, and live metadata, streamed from t
 
 You can try it here: [https://webcast.github.io/webcaster/](https://webcast.github.io/webcaster/)
 
-<img src="https://raw.githubusercontent.com/webcast/webcaster/master/img/screenshot.png"/>
+<img src="https://raw.githubusercontent.com/webcast/webcaster/main/img/screenshot.png"/>
 
 ## Running a server
 

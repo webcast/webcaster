@@ -4,6 +4,7 @@ export const audioFormats: Format[] = [
   { label: "Opus (WebM)", mimeType: "audio/webm;codecs=opus" },
   { label: "Opus (Ogg)", mimeType: "audio/ogg;codecs=opus" },
   { label: "AAC (MP4)", mimeType: "audio/mp4;codecs=mp4a.40.2" },
+  { label: "PCM, lossless (WebM)", mimeType: "audio/webm;codecs=pcm" },
 ]
 
 export const videoFormats: Format[] = [

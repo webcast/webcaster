@@ -1,0 +1,29 @@
+{
+  "name": "@webcast.js/webcaster",
+  "version": "2.0.0",
+  "description": "Browser-based streaming client for the webcast protocol: a reusable mixing and streaming core, and a DJ interface built on it.",
+  "homepage": "https://github.com/webcast/webcaster",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/core/mixer.d.ts",
+      "default": "./dist/core/mixer.js"
+    }
+  },
+  "files": [
+    "dist/core"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "serve": "python3 -m http.server 8000",
+    "test": "tsc && node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@webcast.js/socket": "^2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

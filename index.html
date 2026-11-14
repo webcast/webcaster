@@ -1,276 +1,111 @@
-<!DOCTYPE html>
-    
-<html>
+<!doctype html>
+<html lang="en">
   <head>
-    <meta charset="utf-8"/>
-    <title>Webcaster Client</title>
-    <link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.2/css/bootstrap.min.css" rel="stylesheet" media="screen">
-    <link href="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.3/css/base/jquery.ui.all.min.css" rel="stylesheet" media="screen">
-    <link href="css/client.css" rel="stylesheet" media="screen">
-
-    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.10.0/jquery.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.2/js/bootstrap.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.1/underscore-min.js"></script>
-    <Script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.0.0/backbone-min.js"></script>
-
-    <script src="//cdn.jsdelivr.net/gh/webcast/taglib.js@master/dist/taglib.js"></script>
-    <script>var exports = {};</script>
-    <script src="//cdn.jsdelivr.net/gh/webcast/webcast.js@main/dist/webcast.js"></script>
-    <script src="js/client.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Webcaster</title>
+    <link rel="stylesheet" href="css/client.css" />
+    <script type="importmap">
+      { "imports": { "@webcast.js/socket": "https://cdn.jsdelivr.net/npm/@webcast.js/socket@2.0.0/+esm" } }
+    </script>
+    <script src="https://cdn.jsdelivr.net/gh/webcast/taglib.js@e15bc25f13fb0bdf75240c5acecf891bc34749a7/dist/taglib.js" defer></script>
+    <script type="module" src="dist/ui/main.js"></script>
   </head>
 
-  <body>  
-    <div class="container-fluid">
-      <div class="row-fluid">
-        <div class="span3 settings">
-          <div class="well sidebar-nav">
-            <div class="camera">
-              <video class="camera-preview" style="height: 100%; width: 100%;"></video>
-              <form class="camera-settings" style="display: none;">
-                <fieldset>
-                  <div class="control-group">
-                    <div class="controls">
-                      <label class="checkbox">
-                        <input type="checkbox" name="enable-camera" value="2" class="enable-camera">
-                        Enable camera
-                      </label>
-                    </div>
-                  </div>
-                </fieldset>
-              </form>
+  <body>
+    <header>
+      <h1>Webcaster</h1>
+    </header>
+
+    <main>
+      <section id="stream" class="panel" aria-labelledby="stream-title">
+        <h2 id="stream-title">Stream</h2>
+        <video class="camera-preview" muted playsinline hidden></video>
+        <form class="stream-form">
+          <fieldset class="settings">
+            <label>
+              Destination
+              <input name="url" type="url" value="ws://source:hackme@localhost:8080/mount" required />
+            </label>
+            <label>Format <select name="format"></select></label>
+            <label>Audio bitrate (kbit/s) <select name="audioBitrate"></select></label>
+            <label class="video-only" hidden>Video bitrate (Mbit/s) <select name="videoBitrate"></select></label>
+            <div class="row" role="radiogroup" aria-label="Channels">
+              <label><input type="radio" name="channels" value="2" checked /> Stereo</label>
+              <label><input type="radio" name="channels" value="1" /> Mono</label>
             </div>
-            <form>
-              <fieldset>
-                <div class="control-group">
-                  <div class="controls">
-                    <button class="btn btn-primary start-stream">Start streaming</button>
-                    <button class="btn btn-danger stop-stream" style="display: none;">Stop streaming</button>
-                    <button class="btn btn-info passThrough">CUE</button>
-                  </div>
-                </div>
-                <ul class="nav nav-tabs">
-                  <li class="active">
-                    <a href="#settings" data-toggle="tab">Settings</a>
-                  </li>
-                  <li>
-                    <a href="#metadata" data-toggle="tab">Metadata</a>
-                  </li>
-                </ul>
-                <div class="tab-content">
-                  <div class="tab-pane active" id="settings">
-                    <div class="control-group">
-                      <label>Format</label>
-                      <div class="controls">
-                        <select class="mimeType"></select>
-                      </div>
-                    </div>
-                    <div class="control-group">
-                      <div class="video-settings" style="display: none;">
-                        <label>Video Bitrate (MB/s)</label>
-                        <div class="controls">
-                          <select class="video-bitrate"></select>
-                        </div>
-                      </div>
-                      <label>Samplerate</label>
-                      <div class="controls">
-                        <select class="samplerate"></select>
-                      </div>
-                      <label>Audio Bitrate (kB/s)</label>
-                      <div class="controls">
-                        <select class="audio-bitrate"></select>
-                      </div>
-                      <label>Channels</label>
-                      <div class="controls">
-                        <label class="radio inline">
-                          <input type="radio" name="channels" value="2" class="channels" checked>Stereo
-                        </label>
-                        <label class="radio inline">
-                          <input type="radio" name="channels" value="1" class="channels">Mono
-                        </label>
-                      </div>
-                    </div>
-                    <div class="control-group">
-                      <label>Stream destination URI</label>
-                      <div class="controls">
-                        <input class="url" type="text" size="40" value="ws://source:hackme@localhost:8080/mount">
-                      </div>
-                    </div>
-                  </div>
-                  <div class="tab-pane" id="metadata">
-                    <div class="alert metadata-updated" style="display: none;">
-                      Metadata updated!
-                    </div>
-                    <div class="control-group">
-                      <div class="controls">
-                        <label>Title:</label>
-                        <input class="manual-metadata title" type="text" disabled/>
-                        <label>Artist:</label>
-                        <input class="manual-metadata artist" type="text" disabled/>
-                      </div>
-                      <div class="controls">
-                        <button class="btn btn-primary update-metadata" disabled>Update Metadata</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </fieldset>
-            </form>
+            <label class="camera-option" hidden><input type="checkbox" name="camera" /> Enable camera</label>
+          </fieldset>
+          <div class="row">
+            <button type="submit" class="start">Start streaming</button>
+            <button type="button" class="cue" aria-pressed="false" title="Listen to the mix">CUE</button>
           </div>
+          <p class="status" role="status"></p>
+        </form>
+
+        <form class="metadata-form">
+          <fieldset disabled>
+            <legend>Metadata</legend>
+            <label>Title <input name="title" /></label>
+            <label>Artist <input name="artist" /></label>
+            <button type="submit">Update metadata</button>
+          </fieldset>
+        </form>
+      </section>
+
+      <section id="deck-left" class="panel deck" aria-labelledby="deck-left-title"></section>
+
+      <section id="mixer" class="panel" aria-labelledby="mixer-title">
+        <h2 id="mixer-title">Mixer</h2>
+        <label>
+          Crossfader
+          <input class="crossfader" type="range" min="0" max="100" value="50" />
+        </label>
+        <div class="row crossfader-labels" aria-hidden="true"><span>Playlist 1</span><span>Playlist 2</span></div>
+
+        <div class="microphone">
+          <h3>Microphone</h3>
+          <div class="row">
+            <button type="button" class="record" aria-pressed="false">Microphone on</button>
+            <button type="button" class="cue" aria-pressed="false">CUE</button>
+          </div>
+          <div class="meters">
+            <meter class="level" min="-60" max="0" low="-18" high="-6" optimum="-60" value="-60"></meter>
+            <meter class="level" min="-60" max="0" low="-18" high="-6" optimum="-60" value="-60"></meter>
+          </div>
+          <label>Gain <input class="gain" type="range" min="0" max="150" value="100" /> <output class="gain-value">100%</output></label>
+          <label>Source <select class="device"></select></label>
         </div>
-        <div class="span9">
-          <div class="hero-unit">
-            <h1>Webcaster Client</h1>
-          </div>
-        </div>
-        <div class="span3 playlist-left well">
-          <div class="volume-slider"></div>
-          <h3 class="playlist-label">Playlist 1</h3>
-          <form>
-            <fieldset>
-              <div class="control-group" align="center">
-                <div class="controls">
-                  <button class="btn btn-success play-audio player-control"><i class="icon-play"></i></button>
-                  <button class="btn btn-warning pause-audio player-control" style="display: none;"><i class="icon-pause"></i></button>
-                  <button class="btn previous player-control"><i class="icon-fast-backward"></i></button>
-                  <button class="btn next player-control"><i class="icon-fast-forward"></i></button>
-                  <button class="btn btn-danger stop player-control"><i class="icon-stop"></i></button>
-                  <button class="btn btn-info passThrough">CUE</button>
-                </div>
-              </div>
-            </fieldset>
-          </form>
-          <div class="progress progress-success progress-volume">
-            <div class="progress-seek"></div>
-            <span class="track-position-text"></span>
-            <div class="bar track-position"></div>
-          </div>
-          <div class="progress progress-left">
-            <div class="bar volume-left volume-bar" style="width: 0%"></div>
-          </div>
-          <div class="progress progress-right">
-            <div class="bar volume-right" style="width: 0%"></div>
-          </div>
-          <div class="playlist">
-            <div class="playlist-table" style="display: none;">
-              <table class="files-table table table-striped table-bordered table-hover table-condensed">
-                <tr><th></th><th>Title</th><th>Artist</th><th>Duration</th></tr>
-              </table>
-            </div> 
-            <div class="playlist-input">
-              Add files to playlist:
-              <input type="file" class="files" accept="audio/*" multiple="multiple">
-            </div>
-          </div>
-          <form>
-            <fieldset>
-              <div class="control-group">
-                <div class="controls">
-                  <label class="checkbox">
-                    <input type="checkbox" class="playThrough" checked> Play Through
-                  </label>
-                </div>
-                <div class="controls">
-                  <label class="checkbox">
-                    <input type="checkbox" class="loop"> Repeat playlist
-                  </label>
-                </div>
-              </div>
-            </fieldset>
-          </form>
-        </div>
-        <div class="span3">
-          <div class="mixer well">
-            <h2 class="mixer-label">Mixer</h2>
-            <div class="slider"></div>
-          </div>
-          <div class="microphone well">
-            <div class="microphone-slider"></div>
-            <h3 class="microphone-label">Microphone</h3>
-            <form>
-              <fieldset>
-                <div class="control-group" align="center">
-                  <div class="controls">
-                    <button class="btn btn-danger record-audio player-control"><i class="icon-facetime-video"></i></button>
-                    <button class="btn btn-info passThrough">CUE</button>
-                  </div>
-                </div>
-              </fieldset>
-              <div class="progress progress-left">
-                <div class="bar volume-left" style="width: 0%"></div>
-              </div>
-              <div class="progress progress-right">
-                <div class="bar volume-right" style="width: 0%"></div>
-              </div>
-              <fieldset>
-                <div class="control-group microphone-entry" align="center" style="display: none;">
-                  <label>Microphone source</label>
-                  <div class="controls">
-                    <select class="audio-device"></select>
-                  </div>
-                </div>
-              </fieldset>
-            </form>
-          </div>
-        </div>
-        <div class="span3 playlist-right well">
-          <div class="volume-slider"></div>
-          <h3 class="playlist-label">Playlist 2</h3>
-          <form>
-            <fieldset>
-              <div class="control-group" align="center">
-                <div class="controls">
-                  <button class="btn btn-success play-audio player-control"><i class="icon-play"></i></button>
-                  <button class="btn btn-warning pause-audio player-control" style="display: none;"><i class="icon-pause"></i></button>
-                  <button class="btn previous player-control"><i class="icon-fast-backward"></i></button>
-                  <button class="btn next player-control"><i class="icon-fast-forward"></i></button>
-                  <button class="btn btn-danger stop player-control"><i class="icon-stop"></i></button>
-                  <button class="btn btn-info passThrough">CUE</button>
-                </div>
-              </div>
-            </fieldset>
-          </form>
-          <div class="progress progress-success progress-volume">
-            <div class="progress-seek"></div>
-            <span class="track-position-text"></span>
-            <div class="bar track-position"></div>
-          </div>
-          <div class="progress progress-left">
-            <div class="bar volume-left" style="width: 0%"></div>
-          </div>
-          <div class="progress progress-right">
-            <div class="bar volume-right" style="width: 0%"></div>
-          </div>
-          <div class="playlist">
-            <div class="playlist-table" style="display: none;">
-              <table class="files-table table table-striped table-bordered table-hover table-condensed">
-                <tr><th></th><th>Title</th><th>Artist</th><th>Duration</th></tr>
-              </table>
-            </div>
-            <div class="playlist-input">
-              Add files to playlist:
-              <input type="file" class="files" accept="audio/*" multiple="multiple">
-            </div>
-          </div>
-          <form>
-            <fieldset>
-              <div class="control-group">
-                <div class="controls">
-                  <label class="checkbox">
-                    <input type="checkbox" class="playThrough" checked> Play Through
-                  </label>
-                </div>
-                <div class="controls">
-                  <label class="checkbox">
-                    <input type="checkbox" class="loop"> Repeat playlist
-                  </label>
-                </div>
-              </div>
-            </fieldset>
-          </form>
-        </div>
+      </section>
+
+      <section id="deck-right" class="panel deck" aria-labelledby="deck-right-title"></section>
+    </main>
+
+    <template id="deck-template">
+      <h2 class="deck-title"></h2>
+      <div class="row transport">
+        <button type="button" class="play" aria-label="Play">▶</button>
+        <button type="button" class="previous" aria-label="Previous track">⏮</button>
+        <button type="button" class="next" aria-label="Next track">⏭</button>
+        <button type="button" class="stop" aria-label="Stop">■</button>
+        <button type="button" class="cue" aria-pressed="false">CUE</button>
       </div>
-    </div>
+      <input class="seek" type="range" min="0" max="0" step="0.1" value="0" aria-label="Position" disabled />
+      <output class="time">--:-- / --:--</output>
+      <div class="meters">
+        <meter class="level" min="-60" max="0" low="-18" high="-6" optimum="-60" value="-60"></meter>
+        <meter class="level" min="-60" max="0" low="-18" high="-6" optimum="-60" value="-60"></meter>
+      </div>
+      <label>Gain <input class="gain" type="range" min="0" max="150" value="100" /> <output class="gain-value">100%</output></label>
+      <table class="tracks">
+        <thead>
+          <tr><th>#</th><th>Title</th><th>Artist</th><th>Duration</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <label class="add-files">Add files <input class="files" type="file" accept="audio/*" multiple /></label>
+      <label><input class="play-through" type="checkbox" checked /> Play through</label>
+      <label><input class="loop" type="checkbox" /> Repeat playlist</label>
+    </template>
   </body>
 </html>

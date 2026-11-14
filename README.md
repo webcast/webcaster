@@ -44,8 +44,12 @@ The microphone, line-in and camera need a secure origin: HTTPS, or `localhost`.
 
 ## Using the core in your own client
 
-The mixing and streaming logic lives in `src/core` and has no dependency on this page's UI. It is exported as an ES
-module:
+The mixing and streaming logic lives in `src/core` and has no dependency on this page's UI. It is published on npm as
+an ES module with TypeScript types:
+
+```
+npm install @webcast.js/webcaster
+```
 
 ```js
 import { Mixer, Deck, Microphone } from "@webcast.js/webcaster"
